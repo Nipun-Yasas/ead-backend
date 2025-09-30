@@ -2,7 +2,6 @@ package Backend.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -12,14 +11,12 @@ import Backend.dto.AuthResponse;
 import Backend.dto.LoginRequest;
 import Backend.dto.RegisterRequest;
 import Backend.service.UserService;
-
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/api/auth")
-@CrossOrigin(origins="http://localhost:3000")
 @Tag(name = "Authentication", description = "Authentication management APIs")
 public class UserController {
 
