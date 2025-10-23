@@ -1,4 +1,4 @@
-package Backend.dto;
+package Backend.dto.Request;
 
 public record RegisterRequest(
 
