@@ -1,4 +1,3 @@
-// filepath: c:\Users\Jehan\Desktop\react projects\ead-backend\src\main\java\Backend\controller\ChatController.java
 package Backend.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
