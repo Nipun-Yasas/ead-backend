@@ -80,7 +80,7 @@ public class MessageService {
         }
         
         if (message.isEdited()) {
-            throw new RuntimeException("Message can only be edited once");
+            throw new RuntimeException("This message has already been edited and cannot be modified again");
         }
         
         message.setContent(newContent);
