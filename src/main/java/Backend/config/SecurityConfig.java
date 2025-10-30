@@ -51,12 +51,13 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/health/**").permitAll() // Allow health check endpoints
+                        .requestMatchers("/api/appointments").permitAll() // Allow public appointment creation
+                        .requestMatchers("/api/appointments/test/**").permitAll() // Allow test endpoints
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authenticationProvider(authenticationProvider(passwordEncoder()))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
