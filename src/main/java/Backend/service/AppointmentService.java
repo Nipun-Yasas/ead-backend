@@ -267,10 +267,11 @@ public class AppointmentService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    private boolean isTimeSlotTaken(LocalDate date, LocalTime time) {
+    private boolean isTimeSlotTaken(LocalDate date, LocalTime time, Long appointmentId) {
         Optional<Appointment> existingAppointment = appointmentRepository
                 .findByDateAndTimeAndStatusNot(date, time);
-        return existingAppointment.isPresent();
+        return existingAppointment.isPresent() &&
+                (appointmentId == null || !existingAppointment.get().getId().equals(appointmentId));
     }
 
     private boolean isOwnerOrHasPermission(Appointment appointment, User user) {
