@@ -43,20 +43,6 @@ public class AppointmentController {
     }
 
     /**
-     * Get all appointments for testing (Public access)
-     */
-    @GetMapping("/test/all")
-    public ResponseEntity<List<AppointmentResponse>> getAllAppointmentsForTesting() {
-        try {
-            Page<AppointmentResponse> appointments = appointmentService.getAllAppointments(
-                    PageRequest.of(0, 20, Sort.by("createdAt").descending()));
-            return ResponseEntity.ok(appointments.getContent());
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-        }
-    }
-
-    /**
      * Get all appointments (Admin/Employee only)
      */
     @GetMapping
