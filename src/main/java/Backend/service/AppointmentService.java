@@ -274,7 +274,7 @@ public class AppointmentService {
     }
 
     private boolean isOwnerOrHasPermission(Appointment appointment, User user) {
-        return appointment.getCustomer().getId().equals(user.getId()) ||
+        return (appointment.getCustomer() != null && appointment.getCustomer().getId().equals(user.getId())) ||
                 hasAdminOrEmployeeRole(user);
     }
 
