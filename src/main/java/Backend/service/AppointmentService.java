@@ -34,7 +34,7 @@ public class AppointmentService {
      */
     public AppointmentResponse createAppointment(CreateAppointmentRequest request) {
         // Check if time slot is available
-        if (isTimeSlotTaken(request.getDate(), request.getTime())) {
+        if (isTimeSlotTaken(request.getDate(), request.getTime(), null)) {
             throw new RuntimeException("The selected time slot is not available");
         }
 
@@ -133,7 +133,7 @@ public class AppointmentService {
             // Check if new time slot is available (excluding current appointment)
             if (!appointment.getDate().equals(request.getDate()) ||
                     !appointment.getTime().equals(request.getTime())) {
-                if (isTimeSlotTaken(request.getDate(), request.getTime())) {
+                if (isTimeSlotTaken(request.getDate(), request.getTime(), id)) {
                     throw new RuntimeException("The selected time slot is not available");
                 }
             }
