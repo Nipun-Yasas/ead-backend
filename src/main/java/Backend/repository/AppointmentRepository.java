@@ -69,4 +69,11 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByDateBetweenAndStatus(@Param("startDate") LocalDate startDate,
             @Param("endDate") LocalDate endDate,
             @Param("status") Appointment.AppointmentStatus status);
+
+    Long countByDate(LocalDate date);
+
+    @Query("SELECT a FROM Appointment a WHERE a.date >= :startDate " +
+            "ORDER BY a.date ASC")
+    List<Appointment> findUpcomingAppointments(LocalDate startDate);
+
 }

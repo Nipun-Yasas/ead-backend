@@ -51,6 +51,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
+                        .requestMatchers("/api/admin/**").permitAll()
                         .requestMatchers("/api/health/**").permitAll() // Allow health check endpoints
                         .requestMatchers("/api/appointments").permitAll() // Allow public appointment creation
                         .requestMatchers("/api/appointments/test/**").permitAll() // Allow test endpoints
