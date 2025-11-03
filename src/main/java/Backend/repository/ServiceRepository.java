@@ -24,7 +24,7 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
     List<Object[]> getMonthlyTrend(LocalDateTime startDate);
     
     @Query("SELECT e.fullName as employeeName, COUNT(s) as taskCount " +
-           "FROM Service s JOIN s.employee e WHERE s.status != 'COMPLETED' " +
+           "FROM Service s JOIN s.employee e WHERE s.status != :completedStatus " +
            "GROUP BY e.fullName ORDER BY COUNT(s) DESC")
-    List<Object[]> getEmployeeWorkload();
+    List<Object[]> getEmployeeWorkload(ServiceStatus completedStatus);
 }
