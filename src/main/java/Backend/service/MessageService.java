@@ -26,19 +26,19 @@ import Backend.repository.UserRepository;
 
 @Service
 public class MessageService {
-    
+
     @Autowired
     private MessageRepository messageRepository;
-    
+
     @Autowired
     private ChatRepository chatRepository;
-    
+
     @Autowired
     private UserRepository userRepository;
-    
+
     @Autowired
     private ChatService chatService;
-    
+
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
     
@@ -48,7 +48,7 @@ public class MessageService {
         
         // ✅ Fixed: Use standard findByChatId and filter deleted in stream
         Page<Message> messages = messageRepository.findByChatIdAndNotDeleted(chatId, pageable);
-        
+
         return messages.getContent().stream()
                 .map(this::convertToMessageResponse)
                 .collect(Collectors.toList());
@@ -58,10 +58,10 @@ public class MessageService {
     public MessageResponse sendMessage(MessageRequest request) {
         Chat chat = chatRepository.findById(request.getChatId())
                 .orElseThrow(() -> new RuntimeException("Chat not found"));
-        
+
         User sender = userRepository.findById(request.getSenderId())
                 .orElseThrow(() -> new RuntimeException("Sender not found"));
-        
+
         Message message = new Message();
         message.setChat(chat);
         message.setSender(sender);
@@ -77,10 +77,10 @@ public class MessageService {
         }
         
         Message savedMessage = messageRepository.save(message);
-        
+
         // Update chat's last message
         chatService.updateLastMessage(chat.getId(), request.getContent());
-        
+
         MessageResponse response = convertToMessageResponse(savedMessage);
         
         // ✅ Send real-time update via WebSocket with action type
@@ -112,7 +112,7 @@ public class MessageService {
         message.setContent(newContent);
         message.setEditedAt(LocalDateTime.now());
         message.setEdited(true);
-        
+
         Message savedMessage = messageRepository.save(message);
         MessageResponse response = convertToMessageResponse(savedMessage);
         
@@ -156,7 +156,7 @@ public class MessageService {
         
         messagingTemplate.convertAndSend("/topic/chat/" + chatId, wsMessage);
     }
-    
+
     private MessageResponse convertToMessageResponse(Message message) {
         MessageResponse response = new MessageResponse();
         response.setId(message.getId());
