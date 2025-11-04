@@ -64,7 +64,7 @@ public class DashboardService {
     }
     
     private List<EmployeeWorkload> getEmployeeWorkload() {
-        return serviceRepository.getEmployeeWorkload().stream()
+        return serviceRepository.getEmployeeWorkload(null).stream()
             .limit(3)
             .map(result -> new EmployeeWorkload(
                 result[0].toString(),
