@@ -68,19 +68,19 @@ public class ChatService {
         chatRepository.save(chat);
     }
     
-    private ChatResponse convertToChatResponse(Chat chat) {
-        ChatResponse response = new ChatResponse();
-        response.setId(chat.getId());
-        response.setCustomerId(chat.getCustomer().getId());
-        response.setCustomerName(chat.getCustomer().getName());
-        response.setCustomerEmail(chat.getCustomer().getEmail());
-        response.setEmployeeId(chat.getEmployee().getId());
-        response.setEmployeeName(chat.getEmployee().getName());
-        response.setEmployeeEmail(chat.getEmployee().getEmail());
-        response.setCreatedAt(chat.getCreatedAt());
-        response.setLastMessageAt(chat.getLastMessageAt());
-        response.setLastMessageContent(chat.getLastMessageContent());
-        response.setUnreadCount(0); // Implement unread logic as needed
-        return response;
-    }
+private ChatResponse convertToChatResponse(Chat chat) {
+    ChatResponse response = new ChatResponse();
+    response.setId(chat.getId());
+    response.setCustomerId(chat.getCustomer().getId());
+    response.setCustomerName(chat.getCustomer().getFullName());  // ✅ Fixed: Use getFullName()
+    response.setCustomerEmail(chat.getCustomer().getEmail());
+    response.setEmployeeId(chat.getEmployee().getId());
+    response.setEmployeeName(chat.getEmployee().getFullName());  // ✅ Fixed: Use getFullName()
+    response.setEmployeeEmail(chat.getEmployee().getEmail());
+    response.setCreatedAt(chat.getCreatedAt());
+    response.setLastMessageAt(chat.getLastMessageAt());
+    response.setLastMessageContent(chat.getLastMessageContent());
+    response.setUnreadCount(0);
+    return response;
+}
 }
