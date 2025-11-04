@@ -47,10 +47,9 @@ public class MessageService {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         
         // ✅ Fixed: Use standard findByChatId and filter deleted in stream
-        Page<Message> messages = messageRepository.findByChatId(chatId, pageable);
+        Page<Message> messages = messageRepository.findByChatIdAndNotDeleted(chatId, pageable);
         
         return messages.getContent().stream()
-                .filter(message -> !message.isDeleted()) // Filter out deleted messages
                 .map(this::convertToMessageResponse)
                 .collect(Collectors.toList());
     }
