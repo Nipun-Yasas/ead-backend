@@ -1,5 +1,7 @@
 package Backend.controller;
 
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -14,6 +16,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import Backend.dto.Request.MessageRequest;
+import Backend.dto.Response.ChatResponse;
+import Backend.dto.Response.MessageResponse;
 import Backend.service.ChatService;
 import Backend.service.CustomQuestionService;
 import Backend.service.MessageService;
@@ -33,15 +37,32 @@ public class ChatController {
     private CustomQuestionService customQuestionService;
     
     @GetMapping("/conversations/{userId}")
-    public ResponseEntity<?> getUserConversations(@PathVariable Long userId) {
-        return ResponseEntity.ok(chatService.getUserChats(userId));
+public ResponseEntity<?> getUserConversations(@PathVariable Long userId) {
+    try {
+        List<ChatResponse> chats = chatService.getUserChats(userId);
+        return ResponseEntity.ok(chats);
+    } catch (RuntimeException e) {
+        // Log the error
+        System.err.println("Error fetching conversations for user " + userId + ": " + e.getMessage());
+        e.printStackTrace();
+        return ResponseEntity.status(500).body("Error: " + e.getMessage());
     }
+}
     
+   // ChatController.java
     @GetMapping("/messages/{chatId}")
     public ResponseEntity<?> getChatMessages(@PathVariable Long chatId,
-                                           @RequestParam(defaultValue = "0") int page,
-                                           @RequestParam(defaultValue = "50") int size) {
-        return ResponseEntity.ok(messageService.getChatMessages(chatId, page, size));
+                                        @RequestParam(defaultValue = "0") int page,
+                                        @RequestParam(defaultValue = "50") int size) {
+        try {
+            List<MessageResponse> messages = messageService.getChatMessages(chatId, page, size);
+            System.out.println("✅ Returning " + messages.size() + " messages for chat " + chatId);
+            return ResponseEntity.ok(messages);
+        } catch (Exception e) {
+            System.err.println("❌ Error loading messages: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
+        }
     }
     
     @PostMapping("/send")

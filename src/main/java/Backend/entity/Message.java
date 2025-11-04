@@ -51,6 +51,10 @@ public class Message {
     private boolean isEdited = false;
     private boolean isDeleted = false;
     
+    // Add custom question ID field
+    @Column(name = "custom_question_id")
+    private Long customQuestionId;
+    
     public enum MessageType {
         TEXT,
         CUSTOM_QUESTION,
