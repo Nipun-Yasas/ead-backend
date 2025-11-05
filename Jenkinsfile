@@ -171,7 +171,15 @@ pipeline {
                             sleep 15
                             
                             # Check if container is running
-                            docker ps | grep "test-container-${BUILD_NUMBER}"
+                            if docker ps | grep "test-container-${BUILD_NUMBER}"; then
+                                echo "✅ Container is running!"
+                            else
+                                echo "❌ Container is not running. Checking logs..."
+                                docker logs test-container-${BUILD_NUMBER}
+                                echo "Container status:"
+                                docker ps -a | grep "test-container-${BUILD_NUMBER}"
+                                exit 1
+                            fi
                             
                             # Check container logs (without exposing secrets)
                             echo 'Container startup status:'
@@ -195,7 +203,11 @@ pipeline {
                             
                             # Final container status check
                             echo 'Final container status:'
-                            docker ps | grep "test-container-${BUILD_NUMBER}" || echo 'Container not running'
+                            if docker ps | grep "test-container-${BUILD_NUMBER}"; then
+                                echo "✅ Container is still running - test passed!"
+                            else
+                                echo "⚠️ Container stopped during testing"
+                            fi
                             
                             # Show last few log lines for debugging
                             echo 'Last container logs:'
