@@ -17,7 +17,7 @@ public class UpdateAppointmentRequest {
     private LocalTime time;
     private String vehicleType;
     private String vehicleNumber;
-    private String serviceType;
+    private String service;
     private String instructions;
     private Appointment.AppointmentStatus status;
     private Long employeeId;

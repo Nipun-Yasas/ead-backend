@@ -31,7 +31,7 @@ public class Appointment {
     private String vehicleNumber;
 
     @Column(nullable = false)
-    private String serviceType;
+    private String service;
 
     @Column(columnDefinition = "TEXT")
     private String instructions;
@@ -48,7 +48,7 @@ public class Appointment {
     private User customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id")
+    @JoinColumn(name = "employee_id", nullable = true)
     private User employee;
 
     @Enumerated(EnumType.STRING)
@@ -67,10 +67,10 @@ public class Appointment {
     }
 
     public enum AppointmentStatus {
+        ACCEPT,
+        REJECT,
+        APPROVE,
         PENDING,
-        CONFIRMED,
-        IN_PROGRESS,
-        COMPLETED,
-        CANCELLED
+        ONGOING
     }
 }

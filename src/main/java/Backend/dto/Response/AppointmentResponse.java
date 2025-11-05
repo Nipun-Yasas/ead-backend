@@ -21,7 +21,7 @@ public class AppointmentResponse {
     private LocalTime time;
     private String vehicleType;
     private String vehicleNumber;
-    private String serviceType;
+    private String service;
     private String instructions;
     private String status;
     private String customerName;
@@ -59,7 +59,7 @@ public class AppointmentResponse {
                 .time(appointment.getTime())
                 .vehicleType(appointment.getVehicleType())
                 .vehicleNumber(appointment.getVehicleNumber())
-                .serviceType(appointment.getServiceType())
+                .service(appointment.getService())
                 .instructions(appointment.getInstructions())
                 .customerName(appointment.getCustomerName())
                 .customerEmail(appointment.getCustomerEmail())
