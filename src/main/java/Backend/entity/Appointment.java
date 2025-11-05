@@ -59,7 +59,7 @@ public class Appointment {
     private User customer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "employee_id")
+    @JoinColumn(name = "employee_id", nullable = true)
     private User employee;
 
     @Enumerated(EnumType.STRING)
@@ -78,10 +78,10 @@ public class Appointment {
     }
 
     public enum AppointmentStatus {
+        ACCEPT,
+        REJECT,
+        APPROVE,
         PENDING,
-        CONFIRMED,
-        IN_PROGRESS,
-        COMPLETED,
-        CANCELLED
+        ONGOING
     }
 }

@@ -10,8 +10,7 @@ import Backend.entity.Role;
 import Backend.entity.User;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long>{
-
+public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
     boolean existsByEmail(String email);
 
@@ -20,4 +19,6 @@ public interface UserRepository extends JpaRepository<User, Long>{
      * Spring Data JPA automatically generates: WHERE role.name = ?
      */
     List<User> findByRole_Name(Role.RoleName roleName);
+    List<User> findByRole(Role role);
+    long countByEnabled(boolean enabled);
 }

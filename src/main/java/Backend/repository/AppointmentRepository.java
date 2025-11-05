@@ -43,7 +43,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     List<Appointment> findByDateBetween(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 
     // Check if time slot is available
-    @Query("SELECT a FROM Appointment a WHERE a.date = :date AND a.time = :time AND a.status != 'CANCELLED'")
+        @Query("SELECT a FROM Appointment a WHERE a.date = :date AND a.time = :time AND a.status != 'REJECT'")
     Optional<Appointment> findByDateAndTimeAndStatusNot(@Param("date") LocalDate date, @Param("time") LocalTime time);
 
     // Find appointments for a specific customer by status
