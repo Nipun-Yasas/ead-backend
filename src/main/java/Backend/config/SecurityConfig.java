@@ -1,8 +1,5 @@
 package Backend.config;
 
-import Backend.security.JwtAuthenticationFilter;
-import lombok.RequiredArgsConstructor;
-
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -58,6 +55,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/appointments").permitAll() // Allow public appointment creation
                         .requestMatchers("/api/appointments/test/**").permitAll() // Allow test endpoints
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/api/users/employees").permitAll() // Allow employee endpoints
+
                         .anyRequest().permitAll())
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))

@@ -1,12 +1,8 @@
 package Backend.controller;
 
-import Backend.dto.Request.CreateAppointmentRequest;
-import Backend.dto.Request.UpdateAppointmentRequest;
-import Backend.dto.Response.AppointmentResponse;
-import Backend.entity.Appointment;
-import Backend.service.AppointmentService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import java.time.LocalDate;
+import java.util.List;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -15,10 +11,24 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDate;
-import java.util.List;
+import Backend.dto.Request.CreateAppointmentRequest;
+import Backend.dto.Request.UpdateAppointmentRequest;
+import Backend.dto.Response.AppointmentResponse;
+import Backend.entity.Appointment;
+import Backend.service.AppointmentService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/appointments")
@@ -157,6 +167,27 @@ public class AppointmentController {
     }
 
     /**
+     * ✅ Allocate appointment to employee (Super Admin only)
+     * Changes status from CONFIRMED → IN_PROGRESS
+     * 
+     * Request body: { "employeeId": 5 }
+     */
+    @PutMapping("/{id}/allocate")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<?> allocateAppointment(
+            @PathVariable Long id,
+            @RequestBody AllocateRequest request) {
+        try {
+            AppointmentResponse response = appointmentService.allocateToEmployee(id, request.employeeId());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
      * Assign employee to appointment (Admin/Employee only)
      */
     @PatchMapping("/{appointmentId}/assign/{employeeId}")
@@ -189,9 +220,9 @@ public class AppointmentController {
     }
 
     // Response classes
-    record ErrorResponse(String message) {
-    }
-
-    record SuccessResponse(String message) {
-    }
+    record ErrorResponse(String message) {}
+    record SuccessResponse(String message) {}
+    
+    // ✅ Request record for allocation
+    record AllocateRequest(Long employeeId) {}
 }
