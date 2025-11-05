@@ -171,20 +171,39 @@ pipeline {
                             sleep 15
                             
                             # Check if container is running
-                            docker ps | grep test-container-${BUILD_NUMBER}
+                            docker ps | grep "test-container-${BUILD_NUMBER}"
                             
                             # Check container logs (without exposing secrets)
                             echo 'Container startup status:'
-                            docker logs test-container-${BUILD_NUMBER} | grep -i "started\\|error\\|exception" | head -10
+                            docker logs test-container-${BUILD_NUMBER} | grep -i "started\\|error\\|exception" | head -10 || echo 'No startup logs found yet'
                             
                             # Test health endpoint if available
                             echo 'Testing application health...'
-                            sleep 5
-                            curl -f http://localhost:8091/actuator/health || echo 'Health endpoint not available or not ready'
+                            sleep 10
+                            
+                            # Try health endpoint with retries
+                            for i in {1..3}; do
+                                echo "Health check attempt \$i..."
+                                if curl -f http://localhost:8091/actuator/health; then
+                                    echo 'Health endpoint responded successfully!'
+                                    break
+                                else
+                                    echo "Health check \$i failed, waiting 10 seconds..."
+                                    sleep 10
+                                fi
+                            done || echo 'Health endpoint not available after 3 attempts'
+                            
+                            # Final container status check
+                            echo 'Final container status:'
+                            docker ps | grep "test-container-${BUILD_NUMBER}" || echo 'Container not running'
+                            
+                            # Show last few log lines for debugging
+                            echo 'Last container logs:'
+                            docker logs --tail 20 test-container-${BUILD_NUMBER} || echo 'No logs available'
                             
                             # Cleanup test container
-                            docker stop test-container-${BUILD_NUMBER}
-                            docker rm test-container-${BUILD_NUMBER}
+                            docker stop test-container-${BUILD_NUMBER} || echo 'Container already stopped'
+                            docker rm test-container-${BUILD_NUMBER} || echo 'Container already removed'
                         """
                     }
                 }
