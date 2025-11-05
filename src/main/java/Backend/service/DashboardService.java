@@ -79,7 +79,7 @@ public class DashboardService {
             .map(appointment -> new UpcomingAppointment(
                 appointment.getCustomer() != null ? appointment.getCustomer().getFullName() : appointment.getCustomerName(),
                 appointment.getVehicleType(),
-                appointment.getServiceType(),
+                appointment.getService(),
                 appointment.getDate()
             ))
             .collect(Collectors.toList());

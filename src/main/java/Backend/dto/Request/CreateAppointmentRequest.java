@@ -24,10 +24,13 @@ public class CreateAppointmentRequest {
 
     private String vehicleNumber;
 
-    @NotBlank(message = "Service type is required")
-    private String serviceType;
+    @NotBlank(message = "Service is required")
+    private String service;
 
     private String instructions;
+
+    // Customer ID when provided
+    private Long userId;
 
     // Customer contact info for anonymous bookings
     private String customerName;

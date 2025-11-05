@@ -44,25 +44,39 @@ public class AppointmentService {
         appointment.setTime(request.getTime());
         appointment.setVehicleType(request.getVehicleType());
         appointment.setVehicleNumber(request.getVehicleNumber());
-        appointment.setServiceType(request.getServiceType());
+        appointment.setService(request.getService());
         appointment.setInstructions(request.getInstructions());
 
-        // Set customer contact info for anonymous bookings
-        appointment.setCustomerName(request.getCustomerName());
-        appointment.setCustomerEmail(request.getCustomerEmail());
-        appointment.setCustomerPhone(request.getCustomerPhone());
-
-        // Set customer if user is authenticated, otherwise leave null for anonymous
-        // bookings
-        try {
-            User customer = getCurrentUser();
+        // Set customer based on userId if provided, otherwise use authenticated user
+        if (request.getUserId() != null) {
+            // Use provided userId as customer ID
+            User customer = userRepository.findById(request.getUserId())
+                    .orElseThrow(() -> new RuntimeException("Customer not found with id: " + request.getUserId()));
             appointment.setCustomer(customer);
-        } catch (Exception e) {
-            // Anonymous booking - customer will be null
-            appointment.setCustomer(null);
+            
+            // For registered customers, we don't store separate contact info as it's in the User entity
+            appointment.setCustomerName(null);
+            appointment.setCustomerEmail(null);
+            appointment.setCustomerPhone(null);
+        } else {
+            // Try to get authenticated user, or handle as anonymous booking
+            try {
+                User customer = getCurrentUser();
+                appointment.setCustomer(customer);
+                // For registered customers, we don't store separate contact info
+                appointment.setCustomerName(null);
+                appointment.setCustomerEmail(null);
+                appointment.setCustomerPhone(null);
+            } catch (Exception e) {
+                // Anonymous booking - store customer contact info
+                appointment.setCustomer(null);
+                appointment.setCustomerName(request.getCustomerName());
+                appointment.setCustomerEmail(request.getCustomerEmail());
+                appointment.setCustomerPhone(request.getCustomerPhone());
+            }
         }
 
-        appointment.setStatus(Appointment.AppointmentStatus.PENDING);
+    appointment.setStatus(Appointment.AppointmentStatus.PENDING);
 
         // Save appointment
         Appointment savedAppointment = appointmentRepository.save(appointment);
@@ -152,8 +166,8 @@ public class AppointmentService {
             appointment.setVehicleNumber(request.getVehicleNumber());
         }
 
-        if (request.getServiceType() != null) {
-            appointment.setServiceType(request.getServiceType());
+        if (request.getService() != null) {
+            appointment.setService(request.getService());
         }
 
         if (request.getInstructions() != null) {
@@ -189,7 +203,7 @@ public class AppointmentService {
             throw new RuntimeException("You don't have permission to cancel this appointment");
         }
 
-        appointment.setStatus(Appointment.AppointmentStatus.CANCELLED);
+    appointment.setStatus(Appointment.AppointmentStatus.REJECT);
         Appointment cancelledAppointment = appointmentRepository.save(appointment);
 
         return AppointmentResponse.fromEntity(cancelledAppointment);
@@ -252,7 +266,7 @@ public class AppointmentService {
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
 
         appointment.setEmployee(employee);
-        appointment.setStatus(Appointment.AppointmentStatus.CONFIRMED);
+    appointment.setStatus(Appointment.AppointmentStatus.APPROVE);
 
         Appointment updatedAppointment = appointmentRepository.save(appointment);
         return AppointmentResponse.fromEntity(updatedAppointment);
