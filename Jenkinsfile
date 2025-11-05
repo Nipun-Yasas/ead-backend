@@ -86,15 +86,8 @@ pipeline {
                     // Archive test results
                     junit 'target/surefire-reports/*.xml'
                     
-                    // Archive test reports for viewing in Jenkins
-                    publishHTML([
-                        allowMissing: false,
-                        alwaysLinkToLastBuild: true,
-                        keepAll: true,
-                        reportDir: 'target/surefire-reports',
-                        reportFiles: '*.html',
-                        reportName: 'Test Report'
-                    ])
+                    // Test reports are archived via junit step
+                    echo 'Test reports archived successfully'
                 }
             }
         }
