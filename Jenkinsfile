@@ -117,7 +117,7 @@ pipeline {
             steps {
                 echo 'Building Docker image...'
                 script {
-                    // Build Docker image
+                    // Build Docker image using Docker Pipeline plugin
                     def dockerImage = docker.build("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}")
                     
                     // Also tag as latest
@@ -131,6 +131,10 @@ pipeline {
                         script: "docker images -q ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}",
                         returnStdout: true
                     ).trim()
+                    
+                    echo "✅ Docker image built successfully!"
+                    echo "Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                    echo "Image ID: ${env.DOCKER_IMAGE_ID}"
                 }
             }
         }
@@ -223,7 +227,7 @@ pipeline {
                         sh 'docker logout $DOCKER_REGISTRY'
                     }
                     
-                    // Also save image as tar file for local backup
+                    // Always save image as tar file for local backup
                     sh "docker save ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -o ${DOCKER_IMAGE_NAME}-${DOCKER_IMAGE_TAG}.tar"
                     archiveArtifacts artifacts: "${DOCKER_IMAGE_NAME}-${DOCKER_IMAGE_TAG}.tar", fingerprint: true
                 }
