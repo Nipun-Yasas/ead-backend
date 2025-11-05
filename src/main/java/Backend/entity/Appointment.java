@@ -44,6 +44,15 @@ public class Appointment {
     @Column(name = "service", nullable = false)
     private String serviceType;
 
+    // Getter and setter for service (for backward compatibility)
+    public String getService() {
+        return this.serviceType;
+    }
+
+    public void setService(String service) {
+        this.serviceType = service;
+    }
+
     @Column(columnDefinition = "TEXT")
     private String instructions;
 
@@ -82,6 +91,8 @@ public class Appointment {
         REJECT,
         APPROVE,
         PENDING,
-        ONGOING
+        ONGOING,
+        CONFIRMED,
+        IN_PROGRESS
     }
 }
