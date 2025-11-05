@@ -1,5 +1,18 @@
 package Backend.service;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import Backend.dto.Request.CreateAppointmentRequest;
 import Backend.dto.Request.UpdateAppointmentRequest;
 import Backend.dto.Response.AppointmentResponse;
@@ -8,18 +21,6 @@ import Backend.entity.User;
 import Backend.repository.AppointmentRepository;
 import Backend.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
-import java.time.LocalTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -233,6 +234,67 @@ public class AppointmentService {
                 .map(AppointmentResponse::fromEntity)
                 .collect(Collectors.toList());
     }
+
+    /**
+ * Allocate appointment to employee
+ * Changes status from CONFIRMED → IN_PROGRESS
+ * Used by Task Allocation feature in frontend
+ * 
+ * @param appointmentId - ID of appointment to allocate
+ * @param employeeId - ID of employee to assign
+ * @return AppointmentResponse with updated details
+ * @throws RuntimeException if appointment or employee not found
+ */
+public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeId) {
+    // Verify current user has permission
+    User currentUser = getCurrentUser();
+    if (!hasAdminRole(currentUser)) {
+        throw new RuntimeException("Only Super Admin can allocate appointments");
+    }
+    
+    // Find appointment
+    Appointment appointment = appointmentRepository.findById(appointmentId)
+            .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + appointmentId));
+    
+    // Validate appointment status
+    if (appointment.getStatus() != Appointment.AppointmentStatus.CONFIRMED) {
+        throw new RuntimeException(
+            "Only CONFIRMED appointments can be allocated. Current status: " + appointment.getStatus()
+        );
+    }
+    
+    // Find employee
+    User employee = userRepository.findById(employeeId)
+            .orElseThrow(() -> new RuntimeException("Employee not found with id: " + employeeId));
+    
+    // Validate employee role
+    String employeeRole = employee.getRole().getName().name();
+    if (!"EMPLOYEE".equals(employeeRole)) {
+        throw new RuntimeException(
+            "Selected user is not an employee. Role: " + employeeRole
+        );
+    }
+    
+    // Check if employee is enabled
+    if (!employee.isEnabled()) {
+        throw new RuntimeException("Employee account is disabled");
+    }
+    
+    // Allocate appointment
+    appointment.setEmployee(employee);
+    appointment.setStatus(Appointment.AppointmentStatus.IN_PROGRESS);
+    
+    Appointment savedAppointment = appointmentRepository.save(appointment);
+    
+    // Log allocation for debugging
+    System.out.println(
+        "✅ Appointment #" + appointmentId + 
+        " allocated to employee: " + employee.getFullName() +
+        " (ID: " + employeeId + ")"
+    );
+    
+    return AppointmentResponse.fromEntity(savedAppointment);
+}
 
     /**
      * Assign employee to appointment
