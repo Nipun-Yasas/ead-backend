@@ -219,6 +219,29 @@ public class AppointmentController {
         }
     }
 
+    /**
+     * Change appointment status with email notification
+     * Available statuses: PENDING, APPROVE, ACCEPT, CONFIRMED, IN_PROGRESS, ONGOING, REJECT
+     */
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('EMPLOYEE')")
+    public ResponseEntity<?> changeAppointmentStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody Backend.dto.Request.ChangeStatusRequest request) {
+        try {
+            AppointmentResponse response = appointmentService.changeAppointmentStatus(
+                id, 
+                request.getStatus(), 
+                request.getNotes()
+            );
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
     // Response classes
     record ErrorResponse(String message) {}
     record SuccessResponse(String message) {}

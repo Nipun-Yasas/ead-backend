@@ -29,6 +29,7 @@ public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     /**
      * Create a new appointment
@@ -54,26 +55,14 @@ public class AppointmentService {
             User customer = userRepository.findById(request.getUserId())
                     .orElseThrow(() -> new RuntimeException("Customer not found with id: " + request.getUserId()));
             appointment.setCustomer(customer);
-            
-            // For registered customers, we don't store separate contact info as it's in the User entity
-            appointment.setCustomerName(null);
-            appointment.setCustomerEmail(null);
-            appointment.setCustomerPhone(null);
         } else {
-            // Try to get authenticated user, or handle as anonymous booking
+            // Try to get authenticated user
             try {
                 User customer = getCurrentUser();
                 appointment.setCustomer(customer);
-                // For registered customers, we don't store separate contact info
-                appointment.setCustomerName(null);
-                appointment.setCustomerEmail(null);
-                appointment.setCustomerPhone(null);
             } catch (Exception e) {
-                // Anonymous booking - store customer contact info
-                appointment.setCustomer(null);
-                appointment.setCustomerName(request.getCustomerName());
-                appointment.setCustomerEmail(request.getCustomerEmail());
-                appointment.setCustomerPhone(request.getCustomerPhone());
+                // No authenticated user - appointment must have a customer
+                throw new RuntimeException("User must be authenticated to create an appointment");
             }
         }
 
@@ -81,6 +70,9 @@ public class AppointmentService {
 
         // Save appointment
         Appointment savedAppointment = appointmentRepository.save(appointment);
+
+        // Send confirmation email
+        emailService.sendAppointmentConfirmation(savedAppointment);
 
         return AppointmentResponse.fromEntity(savedAppointment);
     }
@@ -175,8 +167,13 @@ public class AppointmentService {
             appointment.setInstructions(request.getInstructions());
         }
 
+        // Track if status changed to APPROVE for email notification
+        boolean statusChangedToApprove = false;
         if (request.getStatus() != null) {
+            Appointment.AppointmentStatus oldStatus = appointment.getStatus();
             appointment.setStatus(request.getStatus());
+            statusChangedToApprove = (oldStatus != Appointment.AppointmentStatus.APPROVE && 
+                                     request.getStatus() == Appointment.AppointmentStatus.APPROVE);
         }
 
         // Only admins/employees can assign employees
@@ -187,6 +184,12 @@ public class AppointmentService {
         }
 
         Appointment updatedAppointment = appointmentRepository.save(appointment);
+        
+        // Send approval email if status changed to APPROVE
+        if (statusChangedToApprove) {
+            emailService.sendAppointmentApproval(updatedAppointment);
+        }
+        
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
 
@@ -331,6 +334,10 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
     appointment.setStatus(Appointment.AppointmentStatus.APPROVE);
 
         Appointment updatedAppointment = appointmentRepository.save(appointment);
+        
+        // Send approval email to customer
+        emailService.sendAppointmentApproval(updatedAppointment);
+        
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
 
@@ -341,6 +348,50 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
         String email = authentication.getName();
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    /**
+     * Change appointment status with email notification
+     */
+    public AppointmentResponse changeAppointmentStatus(Long id, Appointment.AppointmentStatus newStatus, String notes) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + id));
+
+        User currentUser = getCurrentUser();
+
+        // Only admins and employees can change status
+        if (!hasAdminOrEmployeeRole(currentUser)) {
+            throw new RuntimeException("You don't have permission to change appointment status");
+        }
+
+        Appointment.AppointmentStatus oldStatus = appointment.getStatus();
+        appointment.setStatus(newStatus);
+
+        Appointment updatedAppointment = appointmentRepository.save(appointment);
+
+        // Send email notification about status change
+        String statusMessage = buildStatusMessage(oldStatus, newStatus, notes);
+        emailService.sendStatusChangeEmail(updatedAppointment, statusMessage);
+
+        return AppointmentResponse.fromEntity(updatedAppointment);
+    }
+
+    private String buildStatusMessage(Appointment.AppointmentStatus oldStatus, Appointment.AppointmentStatus newStatus, String notes) {
+        String baseMessage = switch (newStatus) {
+            case PENDING -> "Your appointment is now <strong>pending</strong> review by our team.";
+            case APPROVE -> "Great news! Your appointment has been <strong>approved</strong> and is ready to be scheduled.";
+            case ACCEPT -> "Your appointment has been <strong>accepted</strong> by our team.";
+            case CONFIRMED -> "Your appointment is now <strong>confirmed</strong>. We look forward to serving you!";
+            case IN_PROGRESS -> "Your service is now <strong>in progress</strong>. Our technician is working on your vehicle.";
+            case ONGOING -> "Your appointment is currently <strong>ongoing</strong>. The work is being performed.";
+            case REJECT -> "We regret to inform you that your appointment has been <strong>rejected</strong>. Please contact us for more information or to reschedule.";
+        };
+
+        if (notes != null && !notes.trim().isEmpty()) {
+            baseMessage += "<br><br><strong>Additional Notes:</strong> " + notes;
+        }
+
+        return baseMessage;
     }
 
     private boolean isTimeSlotTaken(LocalDate date, LocalTime time, Long appointmentId) {

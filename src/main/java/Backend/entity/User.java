@@ -21,6 +21,8 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
     
+    private String phone; // Optional phone number
+    
     private String password;
     
     private boolean enabled = true;

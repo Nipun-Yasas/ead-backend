@@ -24,9 +24,6 @@ public class AppointmentResponse {
     private String service;
     private String instructions;
     private String status;
-    private String customerName;
-    private String customerEmail;
-    private String customerPhone;
     private CustomerInfo customer;
     private EmployeeInfo employee;
     private LocalDateTime createdAt;
@@ -40,6 +37,7 @@ public class AppointmentResponse {
         private Long id;
         private String fullName;
         private String email;
+        private String phone;
     }
 
     @Data
@@ -61,9 +59,6 @@ public class AppointmentResponse {
                 .vehicleNumber(appointment.getVehicleNumber())
                 .service(appointment.getService())
                 .instructions(appointment.getInstructions())
-                .customerName(appointment.getCustomerName())
-                .customerEmail(appointment.getCustomerEmail())
-                .customerPhone(appointment.getCustomerPhone())
                 .status(appointment.getStatus().name())
                 .createdAt(appointment.getCreatedAt())
                 .updatedAt(appointment.getUpdatedAt());
@@ -73,6 +68,7 @@ public class AppointmentResponse {
                     .id(appointment.getCustomer().getId())
                     .fullName(appointment.getCustomer().getFullName())
                     .email(appointment.getCustomer().getEmail())
+                    .phone(appointment.getCustomer().getPhone())
                     .build());
         }
 
