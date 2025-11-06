@@ -5,6 +5,6 @@ import java.time.LocalDate;
 public record UpcomingAppointment(
     String customerName,
     String vehicleModel,
-    String serviceType,
+    String service,
     LocalDate date
 ) {}
