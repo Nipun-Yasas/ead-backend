@@ -123,8 +123,8 @@ pipeline {
                         -e MAIL_FROM_NAME='${MAIL_FROM_NAME}' \
                         ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
 
-                        echo "Waiting for application to start..."
-                        sleep 30
+                        echo "Waiting for Spring Boot application to start (this takes ~60s)..."
+                        sleep 60
                         
                         echo "Checking if container is running..."
                         docker ps | grep test-${BUILD_NUMBER} || (echo "Container not running!"; docker logs test-${BUILD_NUMBER}; exit 1)
