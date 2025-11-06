@@ -71,24 +71,15 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building the Spring Boot application...'
-                script {
-                    // Use Maven Docker container for reliable builds
-                    docker.image('maven:3.9.6-eclipse-temurin-17').inside('-v maven-cache:/root/.m2') {
-                        sh 'mvn clean compile -DskipTests=true'
-                    }
-                }
+                sh 'chmod +x mvnw'
+                sh './mvnw clean compile -DskipTests=true -Dmaven.repo.local=${WORKSPACE}/fresh-m2-repo'
             }
         }
         
         stage('Test') {
             steps {
                 echo 'Running unit tests...'
-                script {
-                    // Use Maven Docker container for reliable testing
-                    docker.image('maven:3.9.6-eclipse-temurin-17').inside('-v maven-cache:/root/.m2') {
-                        sh 'mvn test'
-                    }
-                }
+                sh './mvnw test -Dmaven.repo.local=${WORKSPACE}/fresh-m2-repo'
             }
             post {
                 always {
@@ -104,12 +95,7 @@ pipeline {
         stage('Package') {
             steps {
                 echo 'Packaging the application...'
-                script {
-                    // Use Maven Docker container for reliable packaging
-                    docker.image('maven:3.9.6-eclipse-temurin-17').inside('-v maven-cache:/root/.m2 -v ${WORKSPACE}:/workspace') {
-                        sh 'cd /workspace && mvn package -DskipTests=true'
-                    }
-                }
+                sh './mvnw package -DskipTests=true -Dmaven.repo.local=${WORKSPACE}/fresh-m2-repo'
             }
         }
         
