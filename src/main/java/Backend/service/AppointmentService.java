@@ -28,6 +28,7 @@ public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final UserRepository userRepository;
+    private final EmailService emailService;
 
     /**
      * Create a new appointment
@@ -80,6 +81,9 @@ public class AppointmentService {
 
         // Save appointment
         Appointment savedAppointment = appointmentRepository.save(appointment);
+
+        // Send confirmation email
+        emailService.sendAppointmentConfirmation(savedAppointment);
 
         return AppointmentResponse.fromEntity(savedAppointment);
     }
@@ -269,6 +273,10 @@ public class AppointmentService {
     appointment.setStatus(Appointment.AppointmentStatus.APPROVE);
 
         Appointment updatedAppointment = appointmentRepository.save(appointment);
+        
+        // Send approval email
+        emailService.sendAppointmentApproval(updatedAppointment);
+        
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
 
