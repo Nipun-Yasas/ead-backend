@@ -5,7 +5,7 @@ pipeline {
         // Define the Maven tool - make sure this matches your Jenkins tool configuration
         maven 'Maven-3.9'
         // Define the JDK tool - make sure this matches your Jenkins tool configuration  
-        jdk 'JDK-21'
+        jdk 'JDK-17'
     }
     
     environment {
@@ -73,7 +73,7 @@ pipeline {
                 echo 'Building the Spring Boot application...'
                 script {
                     // Use Maven Docker container for reliable builds
-                    docker.image('maven:3.9.6-eclipse-temurin-21').inside('-v maven-cache:/root/.m2') {
+                    docker.image('maven:3.9.6-eclipse-temurin-17').inside('-v maven-cache:/root/.m2') {
                         sh 'mvn clean compile -DskipTests=true'
                     }
                 }
@@ -85,7 +85,7 @@ pipeline {
                 echo 'Running unit tests...'
                 script {
                     // Use Maven Docker container for reliable testing
-                    docker.image('maven:3.9.6-eclipse-temurin-21').inside('-v maven-cache:/root/.m2') {
+                    docker.image('maven:3.9.6-eclipse-temurin-17').inside('-v maven-cache:/root/.m2') {
                         sh 'mvn test'
                     }
                 }
@@ -106,7 +106,7 @@ pipeline {
                 echo 'Packaging the application...'
                 script {
                     // Use Maven Docker container for reliable packaging
-                    docker.image('maven:3.9.6-eclipse-temurin-21').inside('-v maven-cache:/root/.m2') {
+                    docker.image('maven:3.9.6-eclipse-temurin-17').inside('-v maven-cache:/root/.m2') {
                         sh 'mvn package -DskipTests=true'
                     }
                 }
