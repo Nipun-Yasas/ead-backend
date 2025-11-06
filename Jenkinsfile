@@ -79,7 +79,7 @@ pipeline {
         stage('Test') {
             steps {
                 echo 'Running unit tests...'
-                sh './mvnw test'
+                sh './mvnw test -Dmaven.repo.local=${WORKSPACE}/fresh-m2-repo'
             }
             post {
                 always {
