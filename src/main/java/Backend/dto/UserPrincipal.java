@@ -1,14 +1,15 @@
 package Backend.dto;
 
-import Backend.entity.User;
-import lombok.AllArgsConstructor;
-import lombok.Data;
+import java.util.Collection;
+import java.util.List;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.Collection;
-import java.util.Collections;
+import Backend.entity.User;
+import lombok.AllArgsConstructor;
+import lombok.Data;
 
 @Data
 @AllArgsConstructor
@@ -18,10 +19,10 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singleton(
-            new SimpleGrantedAuthority("ROLE_" + user.getRole().getName().name())
-        );
-    }
+    // ✅ Add ROLE_ prefix for Spring Security
+    String roleName = user.getRole().getName().name();
+    return List.of(new SimpleGrantedAuthority("ROLE_" + roleName));
+}
 
     @Override
     public String getPassword() {
