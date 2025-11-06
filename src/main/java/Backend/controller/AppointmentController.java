@@ -168,12 +168,12 @@ public class AppointmentController {
 
     /**
      * ✅ Allocate appointment to employee (Super Admin only)
-     * Changes status from CONFIRMED → IN_PROGRESS
+     * Changes status from APPROVE → IN_PROGRESS
+     * Sends email notifications to both customer and employee
      * 
      * Request body: { "employeeId": 5 }
      */
     @PutMapping("/{id}/allocate")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> allocateAppointment(
             @PathVariable Long id,
             @RequestBody AllocateRequest request) {
@@ -212,6 +212,29 @@ public class AppointmentController {
         try {
             appointmentService.deleteAppointment(id);
             return ResponseEntity.ok(new SuccessResponse("Appointment deleted successfully"));
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
+     * Change appointment status with email notification
+     * Available statuses: PENDING, APPROVE, ACCEPT, CONFIRMED, IN_PROGRESS, ONGOING, REJECT
+     */
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('EMPLOYEE')")
+    public ResponseEntity<?> changeAppointmentStatus(
+            @PathVariable Long id,
+            @Valid @RequestBody Backend.dto.Request.ChangeStatusRequest request) {
+        try {
+            AppointmentResponse response = appointmentService.changeAppointmentStatus(
+                id, 
+                request.getStatus(), 
+                request.getNotes()
+            );
+            return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)

@@ -77,7 +77,7 @@ public class DashboardService {
         return appointmentRepository.findUpcomingAppointments(LocalDate.now()).stream()
             .limit(3)
             .map(appointment -> new UpcomingAppointment(
-                appointment.getCustomer() != null ? appointment.getCustomer().getFullName() : appointment.getCustomerName(),
+                appointment.getCustomer() != null ? appointment.getCustomer().getFullName() : "Unknown",
                 appointment.getVehicleType(),
                 appointment.getService(),
                 appointment.getDate()

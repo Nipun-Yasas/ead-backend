@@ -29,13 +29,6 @@ public class CreateAppointmentRequest {
 
     private String instructions;
 
-    // Customer ID when provided
+    // Customer ID when creating appointment for a specific user (admin use)
     private Long userId;
-
-    // Customer contact info for anonymous bookings
-    private String customerName;
-
-    private String customerEmail;
-
-    private String customerPhone;
 }

@@ -31,10 +31,6 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
-    
-    //  Inject ChatService for auto-creating chats
-    @Autowired
-    private ChatService chatService;
 
     /**
      * Create a new appointment
@@ -60,26 +56,14 @@ public class AppointmentService {
             User customer = userRepository.findById(request.getUserId())
                     .orElseThrow(() -> new RuntimeException("Customer not found with id: " + request.getUserId()));
             appointment.setCustomer(customer);
-            
-            // For registered customers, we don't store separate contact info as it's in the User entity
-            appointment.setCustomerName(null);
-            appointment.setCustomerEmail(null);
-            appointment.setCustomerPhone(null);
         } else {
-            // Try to get authenticated user, or handle as anonymous booking
+            // Try to get authenticated user
             try {
                 User customer = getCurrentUser();
                 appointment.setCustomer(customer);
-                // For registered customers, we don't store separate contact info
-                appointment.setCustomerName(null);
-                appointment.setCustomerEmail(null);
-                appointment.setCustomerPhone(null);
             } catch (Exception e) {
-                // Anonymous booking - store customer contact info
-                appointment.setCustomer(null);
-                appointment.setCustomerName(request.getCustomerName());
-                appointment.setCustomerEmail(request.getCustomerEmail());
-                appointment.setCustomerPhone(request.getCustomerPhone());
+                // No authenticated user - appointment must have a customer
+                throw new RuntimeException("User must be authenticated to create an appointment");
             }
         }
 
@@ -184,8 +168,13 @@ public class AppointmentService {
             appointment.setInstructions(request.getInstructions());
         }
 
+        // Track if status changed to APPROVE for email notification
+        boolean statusChangedToApprove = false;
         if (request.getStatus() != null) {
+            Appointment.AppointmentStatus oldStatus = appointment.getStatus();
             appointment.setStatus(request.getStatus());
+            statusChangedToApprove = (oldStatus != Appointment.AppointmentStatus.APPROVE && 
+                                     request.getStatus() == Appointment.AppointmentStatus.APPROVE);
         }
 
         // Only admins/employees can assign employees
@@ -196,6 +185,12 @@ public class AppointmentService {
         }
 
         Appointment updatedAppointment = appointmentRepository.save(appointment);
+        
+        // Send approval email if status changed to APPROVE
+        if (statusChangedToApprove) {
+            emailService.sendAppointmentApproval(updatedAppointment);
+        }
+        
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
 
@@ -259,62 +254,42 @@ public class AppointmentService {
     }
 
     /**
-     * ✅ UPDATED: Allocate appointment to employee with automatic chat creation
-     * Changes status from CONFIRMED → IN_PROGRESS
-     * Automatically creates a chat between customer and employee
-     * Used by Task Allocation feature in frontend
-     * 
-     * @param appointmentId - ID of appointment to allocate
-     * @param employeeId - ID of employee to assign
-     * @return AppointmentResponse with updated details
-     * @throws RuntimeException if appointment or employee not found
-     */
-    public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeId) {
-        // Verify current user has permission
-        User currentUser = getCurrentUser();
-        if (!hasAdminRole(currentUser)) {
-            throw new RuntimeException("Only Super Admin can allocate appointments");
-        }
-        
-        // Find appointment
-        Appointment appointment = appointmentRepository.findById(appointmentId)
-                .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + appointmentId));
-        
-        // Validate appointment status
-        if (appointment.getStatus() != Appointment.AppointmentStatus.CONFIRMED) {
-            throw new RuntimeException(
-                "Only CONFIRMED appointments can be allocated. Current status: " + appointment.getStatus()
-            );
-        }
-        
-        // Find employee
-        User employee = userRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found with id: " + employeeId));
-        
-        // Validate employee role
-        String employeeRole = employee.getRole().getName().name();
-        if (!"EMPLOYEE".equals(employeeRole)) {
-            throw new RuntimeException(
-                "Selected user is not an employee. Role: " + employeeRole
-            );
-        }
-        
-        // Check if employee is enabled
-        if (!employee.isEnabled()) {
-            throw new RuntimeException("Employee account is disabled");
-        }
-        
-        // Allocate appointment
-        appointment.setEmployee(employee);
-        appointment.setStatus(Appointment.AppointmentStatus.IN_PROGRESS);
-        
-        Appointment savedAppointment = appointmentRepository.save(appointment);
-        
-        // Log allocation for debugging
-        System.out.println(
-            "✅ Appointment #" + appointmentId + 
-            " allocated to employee: " + employee.getFullName() +
-            " (ID: " + employeeId + ")"
+ * Allocate appointment to employee
+ * Changes status from CONFIRMED → IN_PROGRESS
+ * Used by Task Allocation feature in frontend
+ * 
+ * @param appointmentId - ID of appointment to allocate
+ * @param employeeId - ID of employee to assign
+ * @return AppointmentResponse with updated details
+ * @throws RuntimeException if appointment or employee not found
+ */
+public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeId) {
+    // Verify current user has permission
+    User currentUser = getCurrentUser();
+    if (!hasAdminRole(currentUser)) {
+        throw new RuntimeException("Only Super Admin can allocate appointments");
+    }
+    
+    // Find appointment
+    Appointment appointment = appointmentRepository.findById(appointmentId)
+            .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + appointmentId));
+    
+    // Validate appointment status
+    if (appointment.getStatus() != Appointment.AppointmentStatus.APPROVE) {
+        throw new RuntimeException(
+            "Only CONFIRMED appointments can be allocated. Current status: " + appointment.getStatus()
+        );
+    }
+    
+    // Find employee
+    User employee = userRepository.findById(employeeId)
+            .orElseThrow(() -> new RuntimeException("Employee not found with id: " + employeeId));
+    
+    // Validate employee role
+    String employeeRole = employee.getRole().getName().name();
+    if (!"EMPLOYEE".equals(employeeRole)) {
+        throw new RuntimeException(
+            "Selected user is not an employee. Role: " + employeeRole
         );
         
         // ✅ NEW: AUTO-CREATE CHAT after successful allocation
@@ -347,6 +322,26 @@ public class AppointmentService {
         
         return AppointmentResponse.fromEntity(savedAppointment);
     }
+    
+    // Check if employee is enabled
+    if (!employee.isEnabled()) {
+        throw new RuntimeException("Employee account is disabled");
+    }
+    
+    // Allocate appointment
+    appointment.setEmployee(employee);
+    appointment.setStatus(Appointment.AppointmentStatus.IN_PROGRESS);
+    
+    Appointment savedAppointment = appointmentRepository.save(appointment);
+    
+    // Send email notifications to both customer and employee
+    emailService.sendTaskAllocationToCustomer(savedAppointment);
+    emailService.sendTaskAllocationToEmployee(savedAppointment);
+    
+   
+    
+    return AppointmentResponse.fromEntity(savedAppointment);
+}
 
     /**
      * Assign employee to appointment
@@ -370,7 +365,7 @@ public class AppointmentService {
 
         Appointment updatedAppointment = appointmentRepository.save(appointment);
         
-        // Send approval email
+        // Send approval email to customer
         emailService.sendAppointmentApproval(updatedAppointment);
         
         return AppointmentResponse.fromEntity(updatedAppointment);
@@ -383,6 +378,48 @@ public class AppointmentService {
         String email = authentication.getName();
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    /**
+     * Change appointment status with email notification
+     */
+    public AppointmentResponse changeAppointmentStatus(Long id, Appointment.AppointmentStatus newStatus, String notes) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + id));
+
+        User currentUser = getCurrentUser();
+
+        // Only admins and employees can change status
+        if (!hasAdminOrEmployeeRole(currentUser)) {
+            throw new RuntimeException("You don't have permission to change appointment status");
+        }
+
+        Appointment.AppointmentStatus oldStatus = appointment.getStatus();
+        appointment.setStatus(newStatus);
+
+        Appointment updatedAppointment = appointmentRepository.save(appointment);
+
+        // Send email notification about status change
+        String statusMessage = buildStatusMessage(oldStatus, newStatus, notes);
+        emailService.sendStatusChangeEmail(updatedAppointment, statusMessage);
+
+        return AppointmentResponse.fromEntity(updatedAppointment);
+    }
+
+    private String buildStatusMessage(Appointment.AppointmentStatus oldStatus, Appointment.AppointmentStatus newStatus, String notes) {
+        String baseMessage = switch (newStatus) {
+            case PENDING -> "Your appointment is now <strong>pending</strong> review by our team.";
+            case APPROVE -> "Great news! Your appointment has been <strong>approved</strong> and is ready to be scheduled.";
+            
+            case IN_PROGRESS -> "Your service is now <strong>in progress</strong>. Our technician is working on your vehicle.";
+            case REJECT -> "We regret to inform you that your appointment has been <strong>rejected</strong>. Please contact us for more information or to reschedule.";
+        };
+
+        if (notes != null && !notes.trim().isEmpty()) {
+            baseMessage += "<br><br><strong>Additional Notes:</strong> " + notes;
+        }
+
+        return baseMessage;
     }
 
     private boolean isTimeSlotTaken(LocalDate date, LocalTime time, Long appointmentId) {
