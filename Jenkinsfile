@@ -12,7 +12,14 @@ pipeline {
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
         SERVER_PORT = "8090"
         FRONTEND_URL = "http://localhost:5173"
+        
+        // non-sensitive configs
         JWT_EXPIRATION = "86400000"
+        MAIL_MAILER = "smtp"
+        MAIL_HOST = "smtp.gmail.com"
+        MAIL_PORT = "587"
+        MAIL_ENCRYPTION = "tls"
+        MAIL_FROM_NAME = "AutoCare"
     }
 
     stages {
@@ -30,12 +37,21 @@ pipeline {
                             usernameVariable: 'DB_USERNAME',
                             passwordVariable: 'DB_PASSWORD'),
                         string(credentialsId: 'database-url', variable: 'DB_URL'),
-                        string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET_KEY')
+                        string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET_KEY'),
+                        string(credentialsId: 'gemini-api-key', variable: 'GEMINI_API_KEY'),
+                        usernamePassword(credentialsId: 'mail-credentials',
+                            usernameVariable: 'MAIL_USERNAME',
+                            passwordVariable: 'MAIL_PASSWORD'),
+                        string(credentialsId: 'mail-from-address', variable: 'MAIL_FROM_ADDRESS')
                     ]) {
                         env.DATASOURCE_URL = DB_URL
                         env.DATASOURCE_USERNAME = DB_USERNAME
                         env.DATASOURCE_PASSWORD = DB_PASSWORD
                         env.JWT_SECRET = JWT_SECRET_KEY
+                        env.GEMINI_API_KEY = GEMINI_API_KEY
+                        env.MAIL_USERNAME = MAIL_USERNAME
+                        env.MAIL_PASSWORD = MAIL_PASSWORD
+                        env.MAIL_FROM_ADDRESS = MAIL_FROM_ADDRESS
                     }
                 }
             }
@@ -96,6 +112,15 @@ pipeline {
                         -e JWT_EXPIRATION='${JWT_EXPIRATION}' \
                         -e SERVER_PORT='${SERVER_PORT}' \
                         -e FRONTEND_URL='${FRONTEND_URL}' \
+                        -e GEMINI_API_KEY='${env.GEMINI_API_KEY}' \
+                        -e MAIL_MAILER='${MAIL_MAILER}' \
+                        -e MAIL_HOST='${MAIL_HOST}' \
+                        -e MAIL_PORT='${MAIL_PORT}' \
+                        -e MAIL_USERNAME='${env.MAIL_USERNAME}' \
+                        -e MAIL_PASSWORD='${env.MAIL_PASSWORD}' \
+                        -e MAIL_ENCRYPTION='${MAIL_ENCRYPTION}' \
+                        -e MAIL_FROM_ADDRESS='${env.MAIL_FROM_ADDRESS}' \
+                        -e MAIL_FROM_NAME='${MAIL_FROM_NAME}' \
                         ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
 
                         echo "Waiting for application to start..."
