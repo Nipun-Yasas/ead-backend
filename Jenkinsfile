@@ -44,13 +44,15 @@ pipeline {
         stage('Build') {
             steps {
                 sh 'chmod +x mvnw'
-                sh './mvnw clean package -DskipTests=true'
+                // Compile only, tests run in next stage
+                sh './mvnw clean compile'
             }
         }
 
         stage('Test') {
             steps {
-                sh './mvnw test'
+                // Run tests and package if tests pass
+                sh './mvnw package'
             }
             post {
                 always {
@@ -62,6 +64,10 @@ pipeline {
         stage('Docker Build') {
             steps {
                 script {
+                    // Verify JAR exists before Docker build
+                    sh 'ls -lh target/*.jar'
+                    
+                    // Build Docker image
                     sh """
                         docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} .
                         docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest
@@ -70,6 +76,9 @@ pipeline {
                         script: "docker images -q ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}",
                         returnStdout: true
                     ).trim()
+                    
+                    echo "Docker image built: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                    echo "Docker image ID: ${env.DOCKER_IMAGE_ID}"
                 }
             }
         }
@@ -89,8 +98,16 @@ pipeline {
                         -e FRONTEND_URL='${FRONTEND_URL}' \
                         ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
 
-                        sleep 15
-                        docker ps | grep test-${BUILD_NUMBER} || (docker logs test-${BUILD_NUMBER}; exit 1)
+                        echo "Waiting for application to start..."
+                        sleep 30
+                        
+                        echo "Checking if container is running..."
+                        docker ps | grep test-${BUILD_NUMBER} || (echo "Container not running!"; docker logs test-${BUILD_NUMBER}; exit 1)
+                        
+                        echo "Testing health endpoint..."
+                        curl -f http://localhost:8091/actuator/health || (echo "Health check failed!"; docker logs test-${BUILD_NUMBER}; exit 1)
+                        
+                        echo "✅ Docker container is healthy!"
                     """
                 }
             }
