@@ -95,7 +95,7 @@ pipeline {
         stage('Package') {
             steps {
                 echo 'Packaging the application...'
-                // Use fresh Maven repository to avoid persistent cache corruption
+                // Use a fresh Maven local repository to avoid corrupted cache
                 sh './mvnw package -DskipTests=true -Dmaven.repo.local=${WORKSPACE}/fresh-m2-repo'
             }
         }
