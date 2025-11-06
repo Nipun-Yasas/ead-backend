@@ -106,8 +106,8 @@ pipeline {
                 echo 'Packaging the application...'
                 script {
                     // Use Maven Docker container for reliable packaging
-                    docker.image('maven:3.9.6-eclipse-temurin-17').inside('-v maven-cache:/root/.m2') {
-                        sh 'mvn package -DskipTests=true'
+                    docker.image('maven:3.9.6-eclipse-temurin-17').inside('-v maven-cache:/root/.m2 -v ${WORKSPACE}:/workspace') {
+                        sh 'cd /workspace && mvn package -DskipTests=true'
                     }
                 }
             }
