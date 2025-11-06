@@ -274,7 +274,7 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
             .orElseThrow(() -> new RuntimeException("Appointment not found with id: " + appointmentId));
     
     // Validate appointment status
-    if (appointment.getStatus() != Appointment.AppointmentStatus.CONFIRMED) {
+    if (appointment.getStatus() != Appointment.AppointmentStatus.APPROVE) {
         throw new RuntimeException(
             "Only CONFIRMED appointments can be allocated. Current status: " + appointment.getStatus()
         );
@@ -303,12 +303,11 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
     
     Appointment savedAppointment = appointmentRepository.save(appointment);
     
-    // Log allocation for debugging
-    System.out.println(
-        "✅ Appointment #" + appointmentId + 
-        " allocated to employee: " + employee.getFullName() +
-        " (ID: " + employeeId + ")"
-    );
+    // Send email notifications to both customer and employee
+    emailService.sendTaskAllocationToCustomer(savedAppointment);
+    emailService.sendTaskAllocationToEmployee(savedAppointment);
+    
+   
     
     return AppointmentResponse.fromEntity(savedAppointment);
 }
@@ -380,10 +379,8 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
         String baseMessage = switch (newStatus) {
             case PENDING -> "Your appointment is now <strong>pending</strong> review by our team.";
             case APPROVE -> "Great news! Your appointment has been <strong>approved</strong> and is ready to be scheduled.";
-            case ACCEPT -> "Your appointment has been <strong>accepted</strong> by our team.";
-            case CONFIRMED -> "Your appointment is now <strong>confirmed</strong>. We look forward to serving you!";
+            
             case IN_PROGRESS -> "Your service is now <strong>in progress</strong>. Our technician is working on your vehicle.";
-            case ONGOING -> "Your appointment is currently <strong>ongoing</strong>. The work is being performed.";
             case REJECT -> "We regret to inform you that your appointment has been <strong>rejected</strong>. Please contact us for more information or to reschedule.";
         };
 

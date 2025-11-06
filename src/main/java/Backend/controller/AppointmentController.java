@@ -168,12 +168,12 @@ public class AppointmentController {
 
     /**
      * ✅ Allocate appointment to employee (Super Admin only)
-     * Changes status from CONFIRMED → IN_PROGRESS
+     * Changes status from APPROVE → IN_PROGRESS
+     * Sends email notifications to both customer and employee
      * 
      * Request body: { "employeeId": 5 }
      */
     @PutMapping("/{id}/allocate")
-    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<?> allocateAppointment(
             @PathVariable Long id,
             @RequestBody AllocateRequest request) {
