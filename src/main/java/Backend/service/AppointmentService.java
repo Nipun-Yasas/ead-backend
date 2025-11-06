@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -66,7 +67,7 @@ public class AppointmentService {
             }
         }
 
-    appointment.setStatus(Appointment.AppointmentStatus.PENDING);
+        appointment.setStatus(Appointment.AppointmentStatus.PENDING);
 
         // Save appointment
         Appointment savedAppointment = appointmentRepository.save(appointment);
@@ -207,7 +208,7 @@ public class AppointmentService {
             throw new RuntimeException("You don't have permission to cancel this appointment");
         }
 
-    appointment.setStatus(Appointment.AppointmentStatus.REJECT);
+        appointment.setStatus(Appointment.AppointmentStatus.REJECT);
         Appointment cancelledAppointment = appointmentRepository.save(appointment);
 
         return AppointmentResponse.fromEntity(cancelledAppointment);
@@ -290,6 +291,36 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
         throw new RuntimeException(
             "Selected user is not an employee. Role: " + employeeRole
         );
+        
+        // ✅ NEW: AUTO-CREATE CHAT after successful allocation
+        if (appointment.getCustomer() != null) {
+            try {
+                chatService.createOrGetChat(
+                    appointment.getCustomer().getId(), 
+                    employeeId
+                );
+                System.out.println(
+                    "✅ Chat created/retrieved for appointment #" + appointmentId + 
+                    " (Customer ID: " + appointment.getCustomer().getId() + 
+                    ", Employee ID: " + employeeId + ")"
+                );
+            } catch (Exception e) {
+                System.err.println(
+                    "⚠️ Warning: Could not create chat for appointment #" + appointmentId + 
+                    " - " + e.getMessage()
+                );
+                e.printStackTrace();
+                // Don't fail allocation if chat creation fails
+                // This is a non-critical operation
+            }
+        } else {
+            System.err.println(
+                "⚠️ Warning: Appointment #" + appointmentId + 
+                " has no customer, skipping chat creation"
+            );
+        }
+        
+        return AppointmentResponse.fromEntity(savedAppointment);
     }
     
     // Check if employee is enabled
@@ -330,7 +361,7 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
                 .orElseThrow(() -> new RuntimeException("Employee not found"));
 
         appointment.setEmployee(employee);
-    appointment.setStatus(Appointment.AppointmentStatus.APPROVE);
+        appointment.setStatus(Appointment.AppointmentStatus.APPROVE);
 
         Appointment updatedAppointment = appointmentRepository.save(appointment);
         

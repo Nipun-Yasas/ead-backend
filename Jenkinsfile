@@ -1,362 +1,240 @@
 pipeline {
     agent any
-    
+
     tools {
-        // Define the Maven tool - make sure this matches your Jenkins tool configuration
         maven 'Maven-3.9'
-        // Define the JDK tool - make sure this matches your Jenkins tool configuration  
-        jdk 'JDK-21'
+        jdk 'JDK-17'
     }
-    
+
     environment {
-        // Define environment variables
-        MAVEN_OPTS = '-Dmaven.repo.local=$WORKSPACE/.m2/repository'
-        
-        // Docker Configuration
-        DOCKER_IMAGE_NAME = 'ead-backend'
+        MAVEN_OPTS = "-Dmaven.repo.local=$WORKSPACE/.m2/repository"
+        DOCKER_IMAGE_NAME = "ead-backend"
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
-        DOCKER_REGISTRY = 'your-registry.com' // Change this to your Docker registry
+        SERVER_PORT = "8090"
+        FRONTEND_URL = "http://localhost:5173"
         
-        // Non-sensitive configuration
-        SERVER_PORT = '8090'
-        FRONTEND_URL = 'http://localhost:5173'
-        JWT_EXPIRATION = '86400000'
+        // non-sensitive configs
+        JWT_EXPIRATION = "86400000"
+        MAIL_MAILER = "smtp"
+        MAIL_HOST = "smtp.gmail.com"
+        MAIL_PORT = "587"
+        MAIL_ENCRYPTION = "tls"
+        MAIL_FROM_NAME = "AutoCare"
     }
-    
+
     stages {
         stage('Checkout') {
             steps {
-                echo 'Checking out source code from repository...'
                 checkout scm
             }
         }
-        
-        stage('Setup Credentials') {
+
+        stage('Load Credentials') {
             steps {
-                echo 'Setting up secure credentials...'
                 script {
-                    // Load credentials securely from Jenkins credential store
                     withCredentials([
-                        usernamePassword(credentialsId: 'database-credentials', 
-                                       usernameVariable: 'DB_USERNAME', 
-                                       passwordVariable: 'DB_PASSWORD'),
+                        usernamePassword(credentialsId: 'database-credentials',
+                            usernameVariable: 'DB_USERNAME',
+                            passwordVariable: 'DB_PASSWORD'),
                         string(credentialsId: 'database-url', variable: 'DB_URL'),
                         string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET_KEY'),
-                        usernamePassword(credentialsId: 'docker-registry-credentials',
-                                       usernameVariable: 'DOCKER_USERNAME',
-                                       passwordVariable: 'DOCKER_PASSWORD')
+                        string(credentialsId: 'gemini-api-key', variable: 'GEMINI_API_KEY'),
+                        usernamePassword(credentialsId: 'mail-credentials',
+                            usernameVariable: 'MAIL_USERNAME',
+                            passwordVariable: 'MAIL_PASSWORD'),
+                        string(credentialsId: 'mail-from-address', variable: 'MAIL_FROM_ADDRESS')
                     ]) {
-                        // Store credentials in environment variables for this build
-                        env.DATASOURCE_URL = "${DB_URL}"
-                        env.DATASOURCE_USERNAME = "${DB_USERNAME}"
-                        env.DATASOURCE_PASSWORD = "${DB_PASSWORD}"
-                        env.JWT_SECRET = "${JWT_SECRET_KEY}"
-                        
-                        echo 'Credentials loaded successfully (values masked for security)'
-                        echo "Database URL configured: ${DB_URL ? 'Yes' : 'No'}"
-                        echo "JWT Secret configured: ${JWT_SECRET_KEY ? 'Yes' : 'No'}"
+                        env.DATASOURCE_URL = DB_URL
+                        env.DATASOURCE_USERNAME = DB_USERNAME
+                        env.DATASOURCE_PASSWORD = DB_PASSWORD
+                        env.JWT_SECRET = JWT_SECRET_KEY
+                        env.GEMINI_API_KEY = GEMINI_API_KEY
+                        env.MAIL_USERNAME = MAIL_USERNAME
+                        env.MAIL_PASSWORD = MAIL_PASSWORD
+                        env.MAIL_FROM_ADDRESS = MAIL_FROM_ADDRESS
                     }
                 }
             }
         }
-        
-        stage('Clean Workspace') {
-            steps {
-                echo 'Cleaning workspace and Maven cache...'
-                sh 'rm -rf target/'
-                sh 'rm -rf $WORKSPACE/.m2/repository'
-            }
-        }
-        
+
         stage('Build') {
             steps {
-                echo 'Building the Spring Boot application...'
-                script {
-                    // Use Maven Docker container for reliable builds
-                    docker.image('maven:3.9.6-eclipse-temurin-21').inside('-v maven-cache:/root/.m2') {
-                        sh 'mvn clean compile -DskipTests=true'
-                    }
-                }
+                sh 'chmod +x mvnw'
+                // Compile only, tests run in next stage
+                sh './mvnw clean compile'
             }
         }
-        
+
         stage('Test') {
             steps {
-                echo 'Running unit tests...'
-                script {
-                    // Use Maven Docker container for reliable testing
-                    docker.image('maven:3.9.6-eclipse-temurin-21').inside('-v maven-cache:/root/.m2') {
-                        sh 'mvn test'
-                    }
-                }
+                // Run tests and package if tests pass
+                sh './mvnw package'
             }
             post {
                 always {
-                    // Archive test results
                     junit 'target/surefire-reports/*.xml'
-                    
-                    // Test reports are archived via junit step
-                    echo 'Test reports archived successfully'
                 }
             }
         }
-        
-        stage('Package') {
-            steps {
-                echo 'Packaging the application...'
-                script {
-                    // Use Maven Docker container for reliable packaging
-                    docker.image('maven:3.9.6-eclipse-temurin-21').inside('-v maven-cache:/root/.m2') {
-                        sh 'mvn package -DskipTests=true'
-                    }
-                }
-            }
-        }
-        
-        stage('Archive Artifacts') {
-            steps {
-                echo 'Archiving build artifacts...'
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-                
-                // Also archive the original jar if it exists
-                script {
-                    if (fileExists('target/*.jar.original')) {
-                        archiveArtifacts artifacts: 'target/*.jar.original', fingerprint: true
-                    }
-                }
-            }
-        }
-        
+
         stage('Docker Build') {
             steps {
-                echo 'Building Docker image...'
                 script {
-                    // Build Docker image using Docker Pipeline plugin
-                    def dockerImage = docker.build("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}")
+                    // Verify JAR exists before Docker build
+                    sh 'ls -lh target/*.jar'
                     
-                    // Also tag as latest
-                    sh "docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest"
-                    
-                    // Display image information
-                    sh "docker images | grep ${DOCKER_IMAGE_NAME}"
-                    
-                    // Store image ID for later use
+                    // Build Docker image
+                    sh """
+                        docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} .
+                        docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest
+                    """
                     env.DOCKER_IMAGE_ID = sh(
                         script: "docker images -q ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}",
                         returnStdout: true
                     ).trim()
                     
-                    echo "✅ Docker image built successfully!"
-                    echo "Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                    echo "Docker image built: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
+                    echo "Docker image ID: ${env.DOCKER_IMAGE_ID}"
+                }
+            }
+        }
+
+        stage('Docker Test Run') {
+            steps {
+                script {
+                    sh """
+                        docker run -d --name test-${BUILD_NUMBER} \
+                        -p 8091:8090 \
+                        -e DATASOURCE_URL='${env.DATASOURCE_URL}' \
+                        -e DATASOURCE_USERNAME='${env.DATASOURCE_USERNAME}' \
+                        -e DATASOURCE_PASSWORD='${env.DATASOURCE_PASSWORD}' \
+                        -e JWT_SECRET='${env.JWT_SECRET}' \
+                        -e JWT_EXPIRATION='${JWT_EXPIRATION}' \
+                        -e SERVER_PORT='${SERVER_PORT}' \
+                        -e FRONTEND_URL='${FRONTEND_URL}' \
+                        -e GEMINI_API_KEY='${env.GEMINI_API_KEY}' \
+                        -e MAIL_MAILER='${MAIL_MAILER}' \
+                        -e MAIL_HOST='${MAIL_HOST}' \
+                        -e MAIL_PORT='${MAIL_PORT}' \
+                        -e MAIL_USERNAME='${env.MAIL_USERNAME}' \
+                        -e MAIL_PASSWORD='${env.MAIL_PASSWORD}' \
+                        -e MAIL_ENCRYPTION='${MAIL_ENCRYPTION}' \
+                        -e MAIL_FROM_ADDRESS='${env.MAIL_FROM_ADDRESS}' \
+                        -e MAIL_FROM_NAME='${MAIL_FROM_NAME}' \
+                        ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+
+                        echo "🚀 Docker container started: test-${BUILD_NUMBER}"
+                        echo ""
+                        
+                        echo "⏳ Waiting 15 seconds for Spring Boot initialization..."
+                        sleep 15
+                        
+                        echo ""
+                        echo "==================== VERIFICATION CHECKS ===================="
+                        echo ""
+                        
+                        # Check 1: Container still running?
+                        echo "✓ Check 1: Is container still running?"
+                        if docker ps | grep -q test-${BUILD_NUMBER}; then
+                            echo "  ✅ PASS - Container is running"
+                        else
+                            echo "  ❌ FAIL - Container stopped/crashed!"
+                            echo ""
+                            echo "Full container logs:"
+                            docker logs test-${BUILD_NUMBER}
+                            exit 1
+                        fi
+                        echo ""
+                        
+                        # Check 2: Any errors in logs?
+                        echo "✓ Check 2: Checking for errors in logs..."
+                        if docker logs test-${BUILD_NUMBER} 2>&1 | grep -qi "error\\|exception\\|failed"; then
+                            echo "  ⚠️  WARNING - Errors found in logs (may be non-critical)"
+                            docker logs test-${BUILD_NUMBER} 2>&1 | grep -i "error\\|exception\\|failed" | tail -5
+                        else
+                            echo "  ✅ PASS - No errors in logs"
+                        fi
+                        echo ""
+                        
+                        # Check 3: Tomcat started?
+                        echo "✓ Check 3: Did Tomcat web server start?"
+                        if docker logs test-${BUILD_NUMBER} 2>&1 | grep -q "Tomcat started"; then
+                            echo "  ✅ PASS - Tomcat started successfully"
+                        else
+                            echo "  ❌ FAIL - Tomcat not started yet"
+                            echo "  Last 30 lines of logs:"
+                            docker logs --tail 30 test-${BUILD_NUMBER}
+                            exit 1
+                        fi
+                        echo ""
+                        
+                        # Check 4: Spring Boot application started?
+                        echo "✓ Check 4: Did Spring Boot application complete startup?"
+                        if docker logs test-${BUILD_NUMBER} 2>&1 | grep -q "Started BackendApplication"; then
+                            echo "  ✅ PASS - Spring Boot application started successfully"
+                            # Extract startup time
+                            STARTUP_TIME=\$(docker logs test-${BUILD_NUMBER} 2>&1 | grep "Started BackendApplication" | grep -oE '[0-9]+\\.[0-9]+ seconds' || echo "unknown")
+                            echo "  ⏱️  Startup time: \$STARTUP_TIME"
+                        else
+                            echo "  ❌ FAIL - Spring Boot not fully started"
+                            echo "  Last 30 lines of logs:"
+                            docker logs --tail 30 test-${BUILD_NUMBER}
+                            exit 1
+                        fi
+                        echo ""
+                        
+                        # Check 5: Database connection
+                        echo "✓ Check 5: Is database connected?"
+                        if docker logs test-${BUILD_NUMBER} 2>&1 | grep -q "HikariPool.*Start completed"; then
+                            echo "  ✅ PASS - Database connection pool initialized"
+                        else
+                            echo "  ❌ FAIL - Database connection failed"
+                            docker logs test-${BUILD_NUMBER} 2>&1 | grep -i "hikari\\|database\\|connection" | tail -10
+                            exit 1
+                        fi
+                        echo ""
+                        
+                        echo "=============================================================="
+                        echo "✅ ALL CHECKS PASSED! Container is healthy and ready."
+                        echo "=============================================================="
+                        echo ""
+                        echo "📋 Last 20 lines of logs:"
+                        docker logs --tail 20 test-${BUILD_NUMBER}
+                    """
+                }
+            }
+        }
+
+        stage('Archive Artifacts') {
+            steps {
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            }
+        }
+
+        stage('Build Info') {
+            steps {
+                script {
+                    echo "✅ Build complete"
+                    // capture jar file name(s) using sh and avoid Groovy string interpolation issues with $()
+                    def jarFile = sh(script: "ls target/*.jar | grep -v original || true", returnStdout: true).trim()
+                    echo "JAR file: ${jarFile}"
+                    echo "Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                     echo "Image ID: ${env.DOCKER_IMAGE_ID}"
                 }
             }
         }
-        
-        stage('Docker Test') {
-            steps {
-                echo 'Testing Docker image...'
-                script {
-                    // Use credentials securely in Docker test
-                    withCredentials([
-                        usernamePassword(credentialsId: 'database-credentials', 
-                                       usernameVariable: 'DB_USERNAME', 
-                                       passwordVariable: 'DB_PASSWORD'),
-                        string(credentialsId: 'database-url', variable: 'DB_URL'),
-                        string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET_KEY')
-                    ]) {
-                        // Test if the Docker image runs correctly
-                        sh """
-                            echo 'Testing Docker container startup...'
-                            
-                            # Run container in background for testing
-                            docker run -d --name test-container-${BUILD_NUMBER} \
-                                -p 8091:8090 \
-                                -e DATASOURCE_URL='${DB_URL}' \
-                                -e DATASOURCE_USERNAME='${DB_USERNAME}' \
-                                -e DATASOURCE_PASSWORD='${DB_PASSWORD}' \
-                                -e JWT_SECRET='${JWT_SECRET_KEY}' \
-                                -e JWT_EXPIRATION='${JWT_EXPIRATION}' \
-                                -e SERVER_PORT='8090' \
-                                -e FRONTEND_URL='${FRONTEND_URL}' \
-                                ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
-                            
-                            # Wait for container to start
-                            sleep 15
-                            
-                            # Check if container is running
-                            if docker ps | grep "test-container-${BUILD_NUMBER}"; then
-                                echo "✅ Container is running!"
-                            else
-                                echo "❌ Container is not running. Checking logs..."
-                                docker logs test-container-${BUILD_NUMBER}
-                                echo "Container status:"
-                                docker ps -a | grep "test-container-${BUILD_NUMBER}"
-                                exit 1
-                            fi
-                            
-                            # Check container logs (without exposing secrets)
-                            echo 'Container startup status:'
-                            docker logs test-container-${BUILD_NUMBER} | grep -i "started\\|error\\|exception" | head -10 || echo 'No startup logs found yet'
-                            
-                            # Test health endpoint if available
-                            echo 'Testing application health...'
-                            sleep 10
-                            
-                            # Try health endpoint with retries
-                            for i in {1..3}; do
-                                echo "Health check attempt \$i..."
-                                if curl -f http://localhost:8091/actuator/health; then
-                                    echo 'Health endpoint responded successfully!'
-                                    break
-                                else
-                                    echo "Health check \$i failed, waiting 10 seconds..."
-                                    sleep 10
-                                fi
-                            done || echo 'Health endpoint not available after 3 attempts'
-                            
-                            # Final container status check
-                            echo 'Final container status:'
-                            if docker ps | grep "test-container-${BUILD_NUMBER}"; then
-                                echo "✅ Container is still running - test passed!"
-                            else
-                                echo "⚠️ Container stopped during testing"
-                            fi
-                            
-                            # Show last few log lines for debugging
-                            echo 'Last container logs:'
-                            docker logs --tail 20 test-container-${BUILD_NUMBER} || echo 'No logs available'
-                            
-                            # Cleanup test container
-                            docker stop test-container-${BUILD_NUMBER} || echo 'Container already stopped'
-                            docker rm test-container-${BUILD_NUMBER} || echo 'Container already removed'
-                        """
-                    }
-                }
-            }
-        }
-        
-        stage('Docker Push') {
-            when {
-                // Only push on main/master branch or when manually triggered
-                anyOf {
-                    branch 'main'
-                    branch 'master'
-                    branch 'dev'
-                }
-            }
-            steps {
-                echo 'Pushing Docker image to registry...'
-                script {
-                    // Use Docker registry credentials securely
-                    withCredentials([
-                        usernamePassword(credentialsId: 'docker-registry-credentials',
-                                       usernameVariable: 'DOCKER_USERNAME',
-                                       passwordVariable: 'DOCKER_PASSWORD')
-                    ]) {
-                        // Login to Docker registry securely
-                        sh 'echo $DOCKER_PASSWORD | docker login $DOCKER_REGISTRY -u $DOCKER_USERNAME --password-stdin'
-                        
-                        // Tag images for registry
-                        sh "docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_REGISTRY}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-                        sh "docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_REGISTRY}/${DOCKER_IMAGE_NAME}:latest"
-                        
-                        // Push to registry
-                        sh "docker push ${DOCKER_REGISTRY}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-                        sh "docker push ${DOCKER_REGISTRY}/${DOCKER_IMAGE_NAME}:latest"
-                        
-                        echo "✅ Successfully pushed to registry!"
-                        echo "Image: ${DOCKER_REGISTRY}/${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-                        
-                        // Logout for security
-                        sh 'docker logout $DOCKER_REGISTRY'
-                    }
-                    
-                    // Always save image as tar file for local backup
-                    sh "docker save ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} -o ${DOCKER_IMAGE_NAME}-${DOCKER_IMAGE_TAG}.tar"
-                    archiveArtifacts artifacts: "${DOCKER_IMAGE_NAME}-${DOCKER_IMAGE_TAG}.tar", fingerprint: true
-                }
-            }
-        }
-        
-        stage('Build Info') {
-            steps {
-                echo 'Displaying build information...'
-                sh 'echo "Build completed successfully!"'
-                sh 'echo "Artifact location: target/"'
-                sh 'ls -la target/*.jar'
-                
-                script {
-                    def jarFile = sh(script: 'ls target/*.jar | grep -v original | head -1', returnStdout: true).trim()
-                    echo "Main JAR file: ${jarFile}"
-                    
-                    def jarSize = sh(script: "du -h ${jarFile} | cut -f1", returnStdout: true).trim()
-                    echo "JAR file size: ${jarSize}"
-                    
-                    // Docker image information
-                    echo "Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
-                    echo "Docker Image ID: ${env.DOCKER_IMAGE_ID}"
-                    
-                    def imageSize = sh(
-                        script: "docker images ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --format 'table {{.Size}}' | tail -1",
-                        returnStdout: true
-                    ).trim()
-                    echo "Docker Image Size: ${imageSize}"
-                }
-            }
-        }
     }
-    
+
     post {
         always {
-            echo 'Pipeline execution completed.'
-            
-            // Clean up Docker resources
-            script {
-                // Remove any leftover test containers
-                sh """
-                    docker ps -a | grep test-container-${BUILD_NUMBER} | awk '{print \$1}' | xargs -r docker rm -f
-                    
-                    # Clean up dangling images to save space
-                    docker image prune -f
-                """
-            }
-            
-            // Clean up workspace to save disk space
-            cleanWs(
-                cleanWhenAborted: true,
-                cleanWhenFailure: true,
-                cleanWhenNotBuilt: true,
-                cleanWhenSuccess: true,
-                cleanWhenUnstable: true,
-                deleteDirs: true
-            )
+            sh "docker rm -f test-${BUILD_NUMBER} || true"
+            cleanWs()
         }
-        
         success {
-            echo '✅ Build completed successfully!'
-            
-            // You can add notifications here (email, Slack, etc.)
-            // emailext (
-            //     subject: "✅ Build Success: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
-            //     body: "Build completed successfully!\n\nJob: ${env.JOB_NAME}\nBuild: ${env.BUILD_NUMBER}\nBuild URL: ${env.BUILD_URL}",
-            //     to: "your-email@example.com"
-            // )
+            echo "✅ Pipeline Success!"
         }
-        
         failure {
-            echo '❌ Build failed!'
-            
-            // You can add failure notifications here
-            // emailext (
-            //     subject: "❌ Build Failed: ${env.JOB_NAME} - ${env.BUILD_NUMBER}",
-            //     body: "Build failed!\n\nJob: ${env.JOB_NAME}\nBuild: ${env.BUILD_NUMBER}\nBuild URL: ${env.BUILD_URL}\n\nPlease check the console output for details.",
-            //     to: "your-email@example.com"
-            // )
-        }
-        
-        unstable {
-            echo '⚠️ Build is unstable (tests may have failed)!'
+            echo "❌ Pipeline Failed - check logs!"
         }
     }
 }

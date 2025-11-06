@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import Backend.dto.Response.ChatResponse;
 import Backend.entity.Chat;
@@ -24,6 +25,9 @@ public class ChatService {
     @Autowired
     private UserRepository userRepository;
 
+    /**
+     * Get all chats for a user (customer or employee)
+     */
     public List<ChatResponse> getUserChats(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -36,29 +40,57 @@ public class ChatService {
             chats = chatRepository.findByCustomerOrderByLastMessageDesc(userId);
         }
 
-        return chats.stream().map(this::convertToChatResponse).collect(Collectors.toList());
+        return chats.stream()
+                .map(this::convertToChatResponse)
+                .collect(Collectors.toList());
     }
 
-    public Chat createOrGetChat(Long customerId, Long employeeId) {
+    /**
+     * ✅ UPDATED: Create or get existing chat between customer and employee
+     * Returns ChatResponse instead of Chat entity
+     * Used by AppointmentService for automatic chat creation
+     */
+    @Transactional
+    public ChatResponse createOrGetChat(Long customerId, Long employeeId) {
+        // Find customer
         User customer = userRepository.findById(customerId)
-                .orElseThrow(() -> new RuntimeException("Customer not found"));
+                .orElseThrow(() -> new RuntimeException("Customer not found with id: " + customerId));
+        
+        // Find employee
         User employee = userRepository.findById(employeeId)
-                .orElseThrow(() -> new RuntimeException("Employee not found"));
+                .orElseThrow(() -> new RuntimeException("Employee not found with id: " + employeeId));
 
+        // Check if chat already exists
         Optional<Chat> existingChat = chatRepository.findByCustomerAndEmployee(customer, employee);
 
+        Chat chat;
         if (existingChat.isPresent()) {
-            return existingChat.get();
+            // Chat already exists
+            chat = existingChat.get();
+            System.out.println("✅ Chat already exists - ID: " + chat.getId() + 
+                             " (Customer: " + customerId + ", Employee: " + employeeId + ")");
+        } else {
+            // Create new chat
+            Chat newChat = new Chat();
+            newChat.setCustomer(customer);
+            newChat.setEmployee(employee);
+            newChat.setCreatedAt(LocalDateTime.now());
+            newChat.setLastMessageAt(LocalDateTime.now());
+            newChat.setLastMessageContent("Chat created for appointment allocation");
+            
+            chat = chatRepository.save(newChat);
+            
+            System.out.println("✅ New chat created - ID: " + chat.getId() + 
+                             " (Customer: " + customerId + ", Employee: " + employeeId + ")");
         }
 
-        Chat newChat = new Chat();
-        newChat.setCustomer(customer);
-        newChat.setEmployee(employee);
-        newChat.setLastMessageAt(LocalDateTime.now());
-
-        return chatRepository.save(newChat);
+        // Convert to response and return
+        return convertToChatResponse(chat);
     }
 
+    /**
+     * Update last message in chat
+     */
     public void updateLastMessage(Long chatId, String content) {
         Chat chat = chatRepository.findById(chatId)
                 .orElseThrow(() -> new RuntimeException("Chat not found"));
@@ -68,19 +100,31 @@ public class ChatService {
         chatRepository.save(chat);
     }
 
+    /**
+     * Convert Chat entity to ChatResponse DTO
+     */
     private ChatResponse convertToChatResponse(Chat chat) {
         ChatResponse response = new ChatResponse();
+        
+        // Chat info
         response.setId(chat.getId());
-        response.setCustomerId(chat.getCustomer().getId());
-        response.setCustomerName(chat.getCustomer().getFullName());
-        response.setCustomerEmail(chat.getCustomer().getEmail());
-        response.setEmployeeId(chat.getEmployee().getId());
-        response.setEmployeeName(chat.getEmployee().getFullName());
-        response.setEmployeeEmail(chat.getEmployee().getEmail());
         response.setCreatedAt(chat.getCreatedAt());
         response.setLastMessageAt(chat.getLastMessageAt());
         response.setLastMessageContent(chat.getLastMessageContent());
-        response.setUnreadCount(0); // Implement unread logic as needed
+        
+        // Customer info
+        response.setCustomerId(chat.getCustomer().getId());
+        response.setCustomerName(chat.getCustomer().getFullName());
+        response.setCustomerEmail(chat.getCustomer().getEmail());
+        
+        // Employee info
+        response.setEmployeeId(chat.getEmployee().getId());
+        response.setEmployeeName(chat.getEmployee().getFullName());
+        response.setEmployeeEmail(chat.getEmployee().getEmail());
+        
+        // Unread count (implement logic as needed)
+        response.setUnreadCount(0); // TODO: Calculate from messages
+        
         return response;
     }
 }
