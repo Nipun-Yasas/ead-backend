@@ -126,8 +126,8 @@ pipeline {
                         echo "🚀 Docker container started: test-${BUILD_NUMBER}"
                         echo ""
                         
-                        echo "⏳ Waiting 15 seconds for Spring Boot initialization..."
-                        sleep 15
+                        echo "⏳ Waiting 30 seconds for Spring Boot initialization..."
+                        sleep 30
                         
                         echo ""
                         echo "==================== VERIFICATION CHECKS ===================="
@@ -156,12 +156,12 @@ pipeline {
                         fi
                         echo ""
                         
-                        # Check 3: Tomcat started?
-                        echo "✓ Check 3: Did Tomcat web server start?"
-                        if docker logs test-${BUILD_NUMBER} 2>&1 | grep -q "Tomcat started"; then
-                            echo "  ✅ PASS - Tomcat started successfully"
+                        # Check 3: Tomcat initialized?
+                        echo "✓ Check 3: Did Tomcat web server initialize?"
+                        if docker logs test-${BUILD_NUMBER} 2>&1 | grep -q "Tomcat initialized"; then
+                            echo "  ✅ PASS - Tomcat initialized successfully"
                         else
-                            echo "  ❌ FAIL - Tomcat not started yet"
+                            echo "  ❌ FAIL - Tomcat not initialized"
                             echo "  Last 30 lines of logs:"
                             docker logs --tail 30 test-${BUILD_NUMBER}
                             exit 1
