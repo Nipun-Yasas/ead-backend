@@ -123,18 +123,83 @@ pipeline {
                         -e MAIL_FROM_NAME='${MAIL_FROM_NAME}' \
                         ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
 
-                        echo "✅ Docker container started successfully"
-                        echo "   Container: test-${BUILD_NUMBER}"
-                        echo "   Port mapping: 8091:8090"
+                        echo "🚀 Docker container started: test-${BUILD_NUMBER}"
+                        echo ""
                         
-                        echo "Waiting for application startup..."
-                        sleep 10
+                        echo "⏳ Waiting 15 seconds for Spring Boot initialization..."
+                        sleep 15
                         
-                        echo "Checking container status..."
-                        docker ps | grep test-${BUILD_NUMBER} && echo "✅ Container is running!" || echo "⚠️ Container may have stopped"
+                        echo ""
+                        echo "==================== VERIFICATION CHECKS ===================="
+                        echo ""
                         
-                        echo "Last 20 lines of container logs:"
-                        docker logs --tail 20 test-${BUILD_NUMBER} || true
+                        # Check 1: Container still running?
+                        echo "✓ Check 1: Is container still running?"
+                        if docker ps | grep -q test-${BUILD_NUMBER}; then
+                            echo "  ✅ PASS - Container is running"
+                        else
+                            echo "  ❌ FAIL - Container stopped/crashed!"
+                            echo ""
+                            echo "Full container logs:"
+                            docker logs test-${BUILD_NUMBER}
+                            exit 1
+                        fi
+                        echo ""
+                        
+                        # Check 2: Any errors in logs?
+                        echo "✓ Check 2: Checking for errors in logs..."
+                        if docker logs test-${BUILD_NUMBER} 2>&1 | grep -qi "error\\|exception\\|failed"; then
+                            echo "  ⚠️  WARNING - Errors found in logs (may be non-critical)"
+                            docker logs test-${BUILD_NUMBER} 2>&1 | grep -i "error\\|exception\\|failed" | tail -5
+                        else
+                            echo "  ✅ PASS - No errors in logs"
+                        fi
+                        echo ""
+                        
+                        # Check 3: Tomcat started?
+                        echo "✓ Check 3: Did Tomcat web server start?"
+                        if docker logs test-${BUILD_NUMBER} 2>&1 | grep -q "Tomcat started"; then
+                            echo "  ✅ PASS - Tomcat started successfully"
+                        else
+                            echo "  ❌ FAIL - Tomcat not started yet"
+                            echo "  Last 30 lines of logs:"
+                            docker logs --tail 30 test-${BUILD_NUMBER}
+                            exit 1
+                        fi
+                        echo ""
+                        
+                        # Check 4: Spring Boot application started?
+                        echo "✓ Check 4: Did Spring Boot application complete startup?"
+                        if docker logs test-${BUILD_NUMBER} 2>&1 | grep -q "Started BackendApplication"; then
+                            echo "  ✅ PASS - Spring Boot application started successfully"
+                            # Extract startup time
+                            STARTUP_TIME=\$(docker logs test-${BUILD_NUMBER} 2>&1 | grep "Started BackendApplication" | grep -oE '[0-9]+\\.[0-9]+ seconds' || echo "unknown")
+                            echo "  ⏱️  Startup time: \$STARTUP_TIME"
+                        else
+                            echo "  ❌ FAIL - Spring Boot not fully started"
+                            echo "  Last 30 lines of logs:"
+                            docker logs --tail 30 test-${BUILD_NUMBER}
+                            exit 1
+                        fi
+                        echo ""
+                        
+                        # Check 5: Database connection
+                        echo "✓ Check 5: Is database connected?"
+                        if docker logs test-${BUILD_NUMBER} 2>&1 | grep -q "HikariPool.*Start completed"; then
+                            echo "  ✅ PASS - Database connection pool initialized"
+                        else
+                            echo "  ❌ FAIL - Database connection failed"
+                            docker logs test-${BUILD_NUMBER} 2>&1 | grep -i "hikari\\|database\\|connection" | tail -10
+                            exit 1
+                        fi
+                        echo ""
+                        
+                        echo "=============================================================="
+                        echo "✅ ALL CHECKS PASSED! Container is healthy and ready."
+                        echo "=============================================================="
+                        echo ""
+                        echo "📋 Last 20 lines of logs:"
+                        docker logs --tail 20 test-${BUILD_NUMBER}
                     """
                 }
             }
