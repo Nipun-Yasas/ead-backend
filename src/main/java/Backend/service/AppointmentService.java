@@ -31,6 +31,7 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final ChatService chatService;
 
     /**
      * Create a new appointment
@@ -291,36 +292,6 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
         throw new RuntimeException(
             "Selected user is not an employee. Role: " + employeeRole
         );
-        
-        // ✅ NEW: AUTO-CREATE CHAT after successful allocation
-        if (appointment.getCustomer() != null) {
-            try {
-                chatService.createOrGetChat(
-                    appointment.getCustomer().getId(), 
-                    employeeId
-                );
-                System.out.println(
-                    "✅ Chat created/retrieved for appointment #" + appointmentId + 
-                    " (Customer ID: " + appointment.getCustomer().getId() + 
-                    ", Employee ID: " + employeeId + ")"
-                );
-            } catch (Exception e) {
-                System.err.println(
-                    "⚠️ Warning: Could not create chat for appointment #" + appointmentId + 
-                    " - " + e.getMessage()
-                );
-                e.printStackTrace();
-                // Don't fail allocation if chat creation fails
-                // This is a non-critical operation
-            }
-        } else {
-            System.err.println(
-                "⚠️ Warning: Appointment #" + appointmentId + 
-                " has no customer, skipping chat creation"
-            );
-        }
-        
-        return AppointmentResponse.fromEntity(savedAppointment);
     }
     
     // Check if employee is enabled
@@ -338,7 +309,33 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
     emailService.sendTaskAllocationToCustomer(savedAppointment);
     emailService.sendTaskAllocationToEmployee(savedAppointment);
     
-   
+    // ✅ NEW: AUTO-CREATE CHAT after successful allocation
+    if (appointment.getCustomer() != null) {
+        try {
+            chatService.createOrGetChat(
+                appointment.getCustomer().getId(), 
+                employeeId
+            );
+            System.out.println(
+                "✅ Chat created/retrieved for appointment #" + appointmentId + 
+                " (Customer ID: " + appointment.getCustomer().getId() + 
+                ", Employee ID: " + employeeId + ")"
+            );
+        } catch (Exception e) {
+            System.err.println(
+                "⚠️ Warning: Could not create chat for appointment #" + appointmentId + 
+                " - " + e.getMessage()
+            );
+            e.printStackTrace();
+            // Don't fail allocation if chat creation fails
+            // This is a non-critical operation
+        }
+    } else {
+        System.err.println(
+            "⚠️ Warning: Appointment #" + appointmentId + 
+            " has no customer, skipping chat creation"
+        );
+    }
     
     return AppointmentResponse.fromEntity(savedAppointment);
 }
