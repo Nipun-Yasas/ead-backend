@@ -106,7 +106,9 @@ pipeline {
             steps {
                 script {
                     echo "✅ Build complete"
-                    echo "JAR file: $(ls target/*.jar | grep -v original)"
+                    // capture jar file name(s) using sh and avoid Groovy string interpolation issues with $()
+                    def jarFile = sh(script: "ls target/*.jar | grep -v original || true", returnStdout: true).trim()
+                    echo "JAR file: ${jarFile}"
                     echo "Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                     echo "Image ID: ${env.DOCKER_IMAGE_ID}"
                 }
