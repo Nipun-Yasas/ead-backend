@@ -88,9 +88,10 @@ pipeline {
                     // Verify JAR exists before Docker build
                     sh 'ls -lh target/*.jar'
                     
-                    // Build Docker image for AMD64 platform (EC2 compatibility)
+                    // Build Docker image for local testing (ARM64 - native on Mac)
+                    // Note: This is only for CI testing, production image built on EC2
                     sh """
-                        docker build --platform linux/amd64 -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} .
+                        docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} .
                         docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest
                     """
                     env.DOCKER_IMAGE_ID = sh(
@@ -109,7 +110,6 @@ pipeline {
                 script {
                     sh """
                         docker run -d --name test-${BUILD_NUMBER} \
-                        --platform linux/amd64 \
                         -p 8091:8090 \
                         -e DATASOURCE_URL='${env.DATASOURCE_URL}' \
                         -e DATASOURCE_USERNAME='${env.DATASOURCE_USERNAME}' \
@@ -230,29 +230,23 @@ pipeline {
             }
         }
 
-        stage('Push to ECR') {
+        stage('Prepare Deployment Artifacts') {
             steps {
                 script {
-                    withCredentials([
-                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
-                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
-                    ]) {
-                        sh """
-                            echo "🔐 Logging into AWS ECR..."
-                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
-                            
-                            echo "🏷️  Tagging image for ECR..."
-                            docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:${DOCKER_IMAGE_TAG}
-                            docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                            
-                            echo "⬆️  Pushing image to ECR..."
-                            docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${DOCKER_IMAGE_TAG}
-                            docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
-                            
-                            echo "✅ Image pushed successfully!"
-                            echo "📦 Image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${DOCKER_IMAGE_TAG}"
-                        """
-                    }
+                    echo "📦 Preparing deployment artifacts..."
+                    sh """
+                        # Create deployment directory
+                        mkdir -p deployment-artifacts
+                        
+                        # Copy JAR file
+                        cp target/Backend-0.0.1-SNAPSHOT.jar deployment-artifacts/
+                        
+                        # Copy Dockerfile
+                        cp Dockerfile deployment-artifacts/
+                        
+                        echo "✅ Deployment artifacts ready!"
+                        ls -lh deployment-artifacts/
+                    """
                 }
             }
         }
@@ -282,6 +276,14 @@ pipeline {
                             
                             # Set proper permissions for SSH key
                             chmod 600 ${SSH_KEY}
+                            
+                            # Create deployment directory on EC2
+                            echo "📁 Creating deployment directory on EC2..."
+                            ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${EC2_HOST} "mkdir -p /home/${SSH_USER}/app-deployment"
+                            
+                            # Copy deployment artifacts to EC2
+                            echo "📤 Copying JAR and Dockerfile to EC2..."
+                            scp -i ${SSH_KEY} -o StrictHostKeyChecking=no deployment-artifacts/* ${SSH_USER}@${EC2_HOST}:/home/${SSH_USER}/app-deployment/
                             
                             # Copy deployment script to EC2
                             echo "📤 Copying deployment script to EC2..."
