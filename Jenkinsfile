@@ -90,7 +90,7 @@ pipeline {
                     
                     // Build Docker image for AMD64 platform (EC2 compatibility)
                     sh """
-                        docker buildx build --platform linux/amd64 -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --load .
+                        docker build --platform linux/amd64 -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} .
                         docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest
                     """
                     env.DOCKER_IMAGE_ID = sh(
