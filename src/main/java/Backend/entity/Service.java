@@ -18,32 +18,6 @@ public class Service {
     private Long id;
     
     @Column(nullable = false)
-    private String serviceType;
+    private String service;
     
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ServiceStatus status;
-    
-    @ManyToOne
-    @JoinColumn(name = "customer_id")
-    private User customer;
-    
-    @ManyToOne
-    @JoinColumn(name = "employee_id")
-    private User employee;
-    
-    private String vehicleModel;
-    
-    private LocalDateTime createdAt;
-    
-    private LocalDateTime updatedAt;
-    
-    private LocalDateTime completedAt;
-    
-    public enum ServiceStatus {
-        PENDING,
-        IN_PROGRESS,
-        COMPLETED,
-        CANCELLED
-    }
 }
