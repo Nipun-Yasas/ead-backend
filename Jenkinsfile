@@ -20,6 +20,11 @@ pipeline {
         MAIL_PORT = "587"
         MAIL_ENCRYPTION = "tls"
         MAIL_FROM_NAME = "AutoCare"
+        
+        // AWS Configuration
+        AWS_REGION = "eu-north-1"
+        ECR_REGISTRY = "351889158954.dkr.ecr.eu-north-1.amazonaws.com"
+        ECR_REPOSITORY = "ead-backend"
     }
 
     stages {
@@ -220,6 +225,105 @@ pipeline {
                     echo "JAR file: ${jarFile}"
                     echo "Docker Image: ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}"
                     echo "Image ID: ${env.DOCKER_IMAGE_ID}"
+                }
+            }
+        }
+
+        stage('Push to ECR') {
+            when {
+                branch 'dev'  // Only deploy from dev branch, change to 'main' for production
+            }
+            steps {
+                script {
+                    withCredentials([
+                        string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                        string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    ]) {
+                        sh """
+                            echo "🔐 Logging into AWS ECR..."
+                            aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+                            
+                            echo "🏷️  Tagging image for ECR..."
+                            docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:${DOCKER_IMAGE_TAG}
+                            docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                            
+                            echo "⬆️  Pushing image to ECR..."
+                            docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:${DOCKER_IMAGE_TAG}
+                            docker push ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                            
+                            echo "✅ Image pushed successfully!"
+                            echo "📦 Image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${DOCKER_IMAGE_TAG}"
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to EC2') {
+            when {
+                branch 'dev'  // Only deploy from dev branch
+            }
+            steps {
+                script {
+                    withCredentials([
+                        sshUserPrivateKey(credentialsId: 'ec2-ssh-key', keyFileVariable: 'SSH_KEY', usernameVariable: 'SSH_USER'),
+                        string(credentialsId: 'ec2-host', variable: 'EC2_HOST'),
+                        usernamePassword(credentialsId: 'database-credentials',
+                            usernameVariable: 'DB_USERNAME',
+                            passwordVariable: 'DB_PASSWORD'),
+                        string(credentialsId: 'database-url', variable: 'DB_URL'),
+                        string(credentialsId: 'jwt-secret', variable: 'JWT_SECRET_KEY'),
+                        string(credentialsId: 'gemini-api-key', variable: 'GEMINI_API_KEY'),
+                        usernamePassword(credentialsId: 'mail-credentials',
+                            usernameVariable: 'MAIL_USERNAME',
+                            passwordVariable: 'MAIL_PASSWORD'),
+                        string(credentialsId: 'mail-from-address', variable: 'MAIL_FROM_ADDRESS'),
+                        string(credentialsId: 'frontend-url-prod', variable: 'FRONTEND_URL_PROD')
+                    ]) {
+                        sh """
+                            echo "🚀 Deploying to EC2..."
+                            echo "📍 Host: ${EC2_HOST}"
+                            echo ""
+                            
+                            # Set proper permissions for SSH key
+                            chmod 600 ${SSH_KEY}
+                            
+                            # Copy deployment script to EC2
+                            echo "📤 Copying deployment script to EC2..."
+                            scp -i ${SSH_KEY} -o StrictHostKeyChecking=no deploy.sh ${SSH_USER}@${EC2_HOST}:/home/${SSH_USER}/
+                            
+                            # Execute deployment on EC2
+                            echo "🔧 Executing deployment on EC2..."
+                            ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${EC2_HOST} << 'ENDSSH'
+                                # Make script executable
+                                chmod +x /home/\${USER}/deploy.sh
+                                
+                                # Set environment variables for deployment
+                                export DATASOURCE_URL='${DB_URL}'
+                                export DATASOURCE_USERNAME='${DB_USERNAME}'
+                                export DATASOURCE_PASSWORD='${DB_PASSWORD}'
+                                export JWT_SECRET='${JWT_SECRET_KEY}'
+                                export JWT_EXPIRATION='${JWT_EXPIRATION}'
+                                export SERVER_PORT='${SERVER_PORT}'
+                                export FRONTEND_URL='${FRONTEND_URL_PROD}'
+                                export GEMINI_API_KEY='${GEMINI_API_KEY}'
+                                export MAIL_MAILER='${MAIL_MAILER}'
+                                export MAIL_HOST='${MAIL_HOST}'
+                                export MAIL_PORT='${MAIL_PORT}'
+                                export MAIL_USERNAME='${MAIL_USERNAME}'
+                                export MAIL_PASSWORD='${MAIL_PASSWORD}'
+                                export MAIL_ENCRYPTION='${MAIL_ENCRYPTION}'
+                                export MAIL_FROM_ADDRESS='${MAIL_FROM_ADDRESS}'
+                                export MAIL_FROM_NAME='${MAIL_FROM_NAME}'
+                                
+                                # Run deployment script
+                                /home/\${USER}/deploy.sh ${DOCKER_IMAGE_TAG}
+ENDSSH
+                            
+                            echo ""
+                            echo "✅ Deployment completed successfully!"
+                        """
+                    }
                 }
             }
         }

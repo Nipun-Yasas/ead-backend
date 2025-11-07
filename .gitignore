@@ -32,5 +32,13 @@ build/
 ### VS Code ###
 .vscode/
 
-###env
+### Environment variables
 .env
+.env.production
+.env.local
+*.pem
+*.key
+
+### AWS
+AWSCLIV2.pkg
+aws/
