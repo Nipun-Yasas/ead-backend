@@ -88,9 +88,9 @@ pipeline {
                     // Verify JAR exists before Docker build
                     sh 'ls -lh target/*.jar'
                     
-                    // Build Docker image
+                    // Build Docker image for AMD64 platform (EC2 compatibility)
                     sh """
-                        docker build -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} .
+                        docker buildx build --platform linux/amd64 -t ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} --load .
                         docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest
                     """
                     env.DOCKER_IMAGE_ID = sh(
@@ -109,6 +109,7 @@ pipeline {
                 script {
                     sh """
                         docker run -d --name test-${BUILD_NUMBER} \
+                        --platform linux/amd64 \
                         -p 8091:8090 \
                         -e DATASOURCE_URL='${env.DATASOURCE_URL}' \
                         -e DATASOURCE_USERNAME='${env.DATASOURCE_USERNAME}' \
