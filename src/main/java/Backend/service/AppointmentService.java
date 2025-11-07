@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -291,36 +290,6 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
         throw new RuntimeException(
             "Selected user is not an employee. Role: " + employeeRole
         );
-        
-        // ✅ NEW: AUTO-CREATE CHAT after successful allocation
-        if (appointment.getCustomer() != null) {
-            try {
-                chatService.createOrGetChat(
-                    appointment.getCustomer().getId(), 
-                    employeeId
-                );
-                System.out.println(
-                    "✅ Chat created/retrieved for appointment #" + appointmentId + 
-                    " (Customer ID: " + appointment.getCustomer().getId() + 
-                    ", Employee ID: " + employeeId + ")"
-                );
-            } catch (Exception e) {
-                System.err.println(
-                    "⚠️ Warning: Could not create chat for appointment #" + appointmentId + 
-                    " - " + e.getMessage()
-                );
-                e.printStackTrace();
-                // Don't fail allocation if chat creation fails
-                // This is a non-critical operation
-            }
-        } else {
-            System.err.println(
-                "⚠️ Warning: Appointment #" + appointmentId + 
-                " has no customer, skipping chat creation"
-            );
-        }
-        
-        return AppointmentResponse.fromEntity(savedAppointment);
     }
     
     // Check if employee is enabled
@@ -337,8 +306,6 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
     // Send email notifications to both customer and employee
     emailService.sendTaskAllocationToCustomer(savedAppointment);
     emailService.sendTaskAllocationToEmployee(savedAppointment);
-    
-   
     
     return AppointmentResponse.fromEntity(savedAppointment);
 }
