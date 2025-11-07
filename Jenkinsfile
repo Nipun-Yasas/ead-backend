@@ -235,7 +235,8 @@ pipeline {
                 script {
                     echo "📦 Preparing deployment artifacts..."
                     sh """
-                        # Create deployment directory
+                        # Clean and create deployment directory
+                        rm -rf deployment-artifacts
                         mkdir -p deployment-artifacts
                         
                         # Copy JAR file
@@ -246,6 +247,9 @@ pipeline {
                         
                         echo "✅ Deployment artifacts ready!"
                         ls -lh deployment-artifacts/
+                        echo ""
+                        echo "Dockerfile content:"
+                        cat deployment-artifacts/Dockerfile
                     """
                 }
             }
