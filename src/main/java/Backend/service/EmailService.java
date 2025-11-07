@@ -738,9 +738,8 @@ public class EmailService {
         return switch (status) {
             case PENDING -> "linear-gradient(135deg, #fbbf24 0%%, #f59e0b 100%%)";
             case APPROVE -> "linear-gradient(135deg, #10b981 0%%, #059669 100%%)";
-           
             case IN_PROGRESS -> "linear-gradient(135deg, #06b6d4 0%%, #0891b2 100%%)";
-           
+            case COMPLETED -> "linear-gradient(135deg, #22c55e 0%%, #16a34a 100%%)";
             case REJECT -> "linear-gradient(135deg, #ef4444 0%%, #dc2626 100%%)";
         };
     }
@@ -749,9 +748,8 @@ public class EmailService {
         return switch (status) {
             case PENDING -> "⏳";
             case APPROVE -> "✅";
-           
             case IN_PROGRESS -> "🔧";
-          
+            case COMPLETED -> "✔️";
             case REJECT -> "❌";
         };
     }

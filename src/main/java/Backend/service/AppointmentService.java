@@ -379,8 +379,8 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
         String baseMessage = switch (newStatus) {
             case PENDING -> "Your appointment is now <strong>pending</strong> review by our team.";
             case APPROVE -> "Great news! Your appointment has been <strong>approved</strong> and is ready to be scheduled.";
-            
             case IN_PROGRESS -> "Your service is now <strong>in progress</strong>. Our technician is working on your vehicle.";
+            case COMPLETED -> "Great news! Your service has been <strong>completed</strong>. Thank you for choosing us! Your vehicle is ready for pickup.";
             case REJECT -> "We regret to inform you that your appointment has been <strong>rejected</strong>. Please contact us for more information or to reschedule.";
         };
 

@@ -80,10 +80,10 @@ public class Appointment {
     }
 
     public enum AppointmentStatus {
-        
-        REJECT,
+        PENDING,
         APPROVE,
-        PENDING,  
-        IN_PROGRESS
+        REJECT,
+        IN_PROGRESS,
+        COMPLETED
     }
 }
