@@ -242,8 +242,8 @@ pipeline {
                         # Copy JAR file
                         cp target/Backend-0.0.1-SNAPSHOT.jar deployment-artifacts/
                         
-                        # Copy Dockerfile
-                        cp Dockerfile deployment-artifacts/
+                        # Copy EC2-specific Dockerfile (without target/ prefix)
+                        cp Dockerfile.ec2 deployment-artifacts/Dockerfile
                         
                         echo "✅ Deployment artifacts ready!"
                         ls -lh deployment-artifacts/
