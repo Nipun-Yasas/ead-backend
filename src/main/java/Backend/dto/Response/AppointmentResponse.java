@@ -28,6 +28,7 @@ public class AppointmentResponse {
     private EmployeeInfo employee;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Integer progress;
 
     @Data
     @Builder
