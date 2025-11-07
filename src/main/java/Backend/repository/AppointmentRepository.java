@@ -1,6 +1,7 @@
 package Backend.repository;
 
 import Backend.entity.Appointment;
+import Backend.entity.Appointment.AppointmentStatus;
 import Backend.entity.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -16,6 +17,9 @@ import java.util.Optional;
 
 @Repository
 public interface AppointmentRepository extends JpaRepository<Appointment, Long> {
+
+    // Find appointments by employee
+    List<Appointment> findByEmployeeId(Long employeeId);
 
     // Find appointments by customer
     List<Appointment> findByCustomer(User customer);
@@ -75,5 +79,13 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     @Query("SELECT a FROM Appointment a WHERE a.date >= :startDate " +
             "ORDER BY a.date ASC")
     List<Appointment> findUpcomingAppointments(LocalDate startDate);
+    
+    // Find appointments by employee and status
+    List<Appointment> findByEmployeeAndStatus(User employee, AppointmentStatus status);
+    
+    // Count appointments by employee
+    long countByEmployee(User employee);
+    
+
 
 }

@@ -6,7 +6,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.Authentication;
@@ -50,6 +49,7 @@ public class AppointmentService {
         appointment.setVehicleNumber(request.getVehicleNumber());
         appointment.setService(request.getService());
         appointment.setInstructions(request.getInstructions());
+        appointment.setProgress(0);
 
         // Set customer based on userId if provided, otherwise use authenticated user
         if (request.getUserId() != null) {
@@ -408,6 +408,7 @@ public class AppointmentService {
                 "Your service is now <strong>in progress</strong>. Our technician is working on your vehicle.";
             case REJECT ->
                 "We regret to inform you that your appointment has been <strong>rejected</strong>. Please contact us for more information or to reschedule.";
+            default -> "Your appointment status has been updated to <strong>" + newStatus + "</strong>.";
         };
 
         if (notes != null && !notes.trim().isEmpty()) {
