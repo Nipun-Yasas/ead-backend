@@ -281,13 +281,17 @@ pipeline {
                             # Set proper permissions for SSH key
                             chmod 600 ${SSH_KEY}
                             
-                            # Create deployment directory on EC2
-                            echo "📁 Creating deployment directory on EC2..."
-                            ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${EC2_HOST} "mkdir -p /home/${SSH_USER}/app-deployment"
+                            # Clean and recreate deployment directory on EC2
+                            echo "🧹 Cleaning deployment directory on EC2..."
+                            ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${EC2_HOST} "rm -rf /home/${SSH_USER}/app-deployment && mkdir -p /home/${SSH_USER}/app-deployment"
                             
                             # Copy deployment artifacts to EC2
                             echo "📤 Copying JAR and Dockerfile to EC2..."
                             scp -i ${SSH_KEY} -o StrictHostKeyChecking=no deployment-artifacts/* ${SSH_USER}@${EC2_HOST}:/home/${SSH_USER}/app-deployment/
+                            
+                            # Verify files on EC2
+                            echo "✅ Verifying files on EC2..."
+                            ssh -i ${SSH_KEY} -o StrictHostKeyChecking=no ${SSH_USER}@${EC2_HOST} "ls -lh /home/${SSH_USER}/app-deployment/ && echo '--- Dockerfile content: ---' && cat /home/${SSH_USER}/app-deployment/Dockerfile"
                             
                             # Copy deployment script to EC2
                             echo "📤 Copying deployment script to EC2..."
