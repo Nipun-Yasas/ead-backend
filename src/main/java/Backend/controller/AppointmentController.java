@@ -221,7 +221,7 @@ public class AppointmentController {
 
     /**
      * Change appointment status with email notification
-     * Available statuses: PENDING, APPROVE, ACCEPT, CONFIRMED, IN_PROGRESS, ONGOING, REJECT
+     * Available statuses: PENDING, APPROVE, ACCEPT, CONFIRMED, IN_PROGRESS, ONGOING, REJECT, COMPLETED
      */
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('EMPLOYEE')")
@@ -235,6 +235,40 @@ public class AppointmentController {
                 request.getNotes()
             );
             return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
+     * Get appointments by employee ID
+     * Returns all appointments assigned to a specific employee
+     */
+    @GetMapping("/employee/{employeeId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('EMPLOYEE')")
+    public ResponseEntity<?> getAppointmentsByEmployee(@PathVariable Long employeeId) {
+        try {
+            List<AppointmentResponse> appointments = appointmentService.getAppointmentsByEmployee(employeeId);
+            return ResponseEntity.ok(appointments);
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse(e.getMessage()));
+        }
+    }
+
+    /**
+     * Get appointments by customer ID
+     * Returns all appointments for a specific customer
+     */
+    @GetMapping("/customer/{customerId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('EMPLOYEE')")
+    public ResponseEntity<?> getAppointmentsByCustomer(@PathVariable Long customerId) {
+        try {
+            List<AppointmentResponse> appointments = appointmentService.getAppointmentsByCustomer(customerId);
+            return ResponseEntity.ok(appointments);
         } catch (RuntimeException e) {
             return ResponseEntity
                     .status(HttpStatus.BAD_REQUEST)

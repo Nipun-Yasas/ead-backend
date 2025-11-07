@@ -53,6 +53,10 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     // Find appointments for a specific customer by status
     List<Appointment> findByCustomerAndStatus(User customer, Appointment.AppointmentStatus status);
 
+    // Count appointments by employee and status
+    @Query("SELECT COUNT(a) FROM Appointment a WHERE a.employee = :employee AND a.status = :status")
+    long countByEmployeeAndStatus(@Param("employee") User employee, @Param("status") Appointment.AppointmentStatus status);
+
     // Find today's appointments
     @Query("SELECT a FROM Appointment a WHERE a.date = CURRENT_DATE ORDER BY a.time")
     List<Appointment> findTodaysAppointments();

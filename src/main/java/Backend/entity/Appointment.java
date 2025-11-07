@@ -78,7 +78,7 @@ public class Appointment {
     }
 
     public enum AppointmentStatus {
-        PENDING,  
+        PENDING,
         APPROVE,
         REJECT,
         IN_PROGRESS,

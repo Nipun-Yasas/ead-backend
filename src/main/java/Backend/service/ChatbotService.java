@@ -50,6 +50,17 @@ public class ChatbotService {
             - If you don't know something, be honest and suggest contacting support
             - Keep responses clear and easy to understand
             - Use bullet points or numbered lists for multiple steps
+
+            ""Main Workflow:**
+            1. User books an appointment by providing date, time, vehicle details, service type, and instructions
+            2. System checks for available time slots and assigns an employee
+            3. User receives confirmation with appointment details
+            4. On the appointment date, the vehicle is serviced as per the provided instructions
+            5. User can check appointment status and service updates via their dashboard
+            6. After service completion, user is notified and send invoice for his email
+            7. User can chat with human support for any further assistance in chat support
+            8. When Service is ongoing, customer can chat with employee assigned to his appointment in chat support
+            9. Any Urgent issue, you can call for our hotline: 0782099179
             
             **Available Services:**
             - Regular Maintenance (oil change, filter replacement, fluid checks)
