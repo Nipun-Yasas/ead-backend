@@ -16,6 +16,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -42,22 +44,13 @@ public class Appointment {
     private String vehicleNumber;
 
     @Column(name = "service", nullable = false)
-    private String serviceType;
-
-    // Getter and setter for service (for backward compatibility)
-    public String getService() {
-        return this.serviceType;
-    }
-
-    public void setService(String service) {
-        this.serviceType = service;
-    }
+    private String service;
 
     @Column(columnDefinition = "TEXT")
     private String instructions;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "customer_id", nullable = true) // Allow null for anonymous bookings
+    @JoinColumn(name = "customer_id", nullable = false) 
     private User customer;
 
     @ManyToOne(fetch = FetchType.EAGER)
@@ -67,6 +60,11 @@ public class Appointment {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private AppointmentStatus status = AppointmentStatus.PENDING;
+
+    @Min(0)
+    @Max(100)
+    @Column(nullable = false)
+    private Integer progress = 0;
 
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();

@@ -30,6 +30,7 @@ public class AppointmentService {
     private final AppointmentRepository appointmentRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
+    private final ChatService chatService;
 
     /**
      * Create a new appointment
@@ -48,6 +49,7 @@ public class AppointmentService {
         appointment.setVehicleNumber(request.getVehicleNumber());
         appointment.setService(request.getService());
         appointment.setInstructions(request.getInstructions());
+        appointment.setProgress(0);
 
         // Set customer based on userId if provided, otherwise use authenticated user
         if (request.getUserId() != null) {
@@ -172,8 +174,8 @@ public class AppointmentService {
         if (request.getStatus() != null) {
             Appointment.AppointmentStatus oldStatus = appointment.getStatus();
             appointment.setStatus(request.getStatus());
-            statusChangedToApprove = (oldStatus != Appointment.AppointmentStatus.APPROVE && 
-                                     request.getStatus() == Appointment.AppointmentStatus.APPROVE);
+            statusChangedToApprove = (oldStatus != Appointment.AppointmentStatus.APPROVE &&
+                    request.getStatus() == Appointment.AppointmentStatus.APPROVE);
         }
 
         // Only admins/employees can assign employees
@@ -184,12 +186,12 @@ public class AppointmentService {
         }
 
         Appointment updatedAppointment = appointmentRepository.save(appointment);
-        
+
         // Send approval email if status changed to APPROVE
         if (statusChangedToApprove) {
             emailService.sendAppointmentApproval(updatedAppointment);
         }
-        
+
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
 
@@ -359,10 +361,10 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
         appointment.setStatus(Appointment.AppointmentStatus.APPROVE);
 
         Appointment updatedAppointment = appointmentRepository.save(appointment);
-        
+
         // Send approval email to customer
         emailService.sendAppointmentApproval(updatedAppointment);
-        
+
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
 
@@ -401,7 +403,8 @@ public AppointmentResponse allocateToEmployee(Long appointmentId, Long employeeI
         return AppointmentResponse.fromEntity(updatedAppointment);
     }
 
-    private String buildStatusMessage(Appointment.AppointmentStatus oldStatus, Appointment.AppointmentStatus newStatus, String notes) {
+    private String buildStatusMessage(Appointment.AppointmentStatus oldStatus, Appointment.AppointmentStatus newStatus,
+            String notes) {
         String baseMessage = switch (newStatus) {
             case PENDING -> "Your appointment is now <strong>pending</strong> review by our team.";
             case APPROVE -> "Great news! Your appointment has been <strong>approved</strong> and is ready to be scheduled.";

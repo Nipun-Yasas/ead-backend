@@ -741,9 +741,9 @@ public class EmailService {
             case IN_PROGRESS -> "linear-gradient(135deg, #06b6d4 0%%, #0891b2 100%%)";
             case COMPLETED -> "linear-gradient(135deg, #22c55e 0%%, #16a34a 100%%)";
             case REJECT -> "linear-gradient(135deg, #ef4444 0%%, #dc2626 100%%)";
+            default -> "linear-gradient(135deg, #6b7280 0%%, #4b5563 100%%)";
         };
     }
-
     private String getStatusIcon(Appointment.AppointmentStatus status) {
         return switch (status) {
             case PENDING -> "⏳";
@@ -751,6 +751,7 @@ public class EmailService {
             case IN_PROGRESS -> "🔧";
             case COMPLETED -> "✔️";
             case REJECT -> "❌";
+            default -> "📋";
         };
     }
 
