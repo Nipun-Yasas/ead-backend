@@ -27,7 +27,14 @@ public class EmployeeService {
     public Appointment updateAppointmentProgress(Long appointmentId, Integer progress) {
         Appointment appointment = appointmentRepository.findById(appointmentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Appointment not found"));
+        
         appointment.setProgress(progress);
+        
+        // Update status to COMPLETED when progress reaches 100
+        if (progress != null && progress >= 100) {
+            appointment.setStatus(Appointment.AppointmentStatus.COMPLETED);
+        }
+        
         return appointmentRepository.save(appointment);
     }
 
