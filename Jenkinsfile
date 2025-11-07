@@ -230,9 +230,6 @@ pipeline {
         }
 
         stage('Push to ECR') {
-            when {
-                branch 'dev'  // Only deploy from dev branch, change to 'main' for production
-            }
             steps {
                 script {
                     withCredentials([
@@ -260,9 +257,6 @@ pipeline {
         }
 
         stage('Deploy to EC2') {
-            when {
-                branch 'dev'  // Only deploy from dev branch
-            }
             steps {
                 script {
                     withCredentials([
