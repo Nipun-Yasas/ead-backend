@@ -253,6 +253,34 @@ public class AppointmentService {
     }
 
     /**
+     * Get appointments by employee ID
+     */
+    @Transactional(readOnly = true)
+    public List<AppointmentResponse> getAppointmentsByEmployee(Long employeeId) {
+        User employee = userRepository.findById(employeeId)
+                .orElseThrow(() -> new RuntimeException("Employee not found with id: " + employeeId));
+
+        List<Appointment> appointments = appointmentRepository.findByEmployee(employee);
+        return appointments.stream()
+                .map(AppointmentResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get appointments by customer ID
+     */
+    @Transactional(readOnly = true)
+    public List<AppointmentResponse> getAppointmentsByCustomer(Long customerId) {
+        User customer = userRepository.findById(customerId)
+                .orElseThrow(() -> new RuntimeException("Customer not found with id: " + customerId));
+
+        List<Appointment> appointments = appointmentRepository.findByCustomer(customer);
+        return appointments.stream()
+                .map(AppointmentResponse::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    /**
  * Allocate appointment to employee
  * Changes status from CONFIRMED → IN_PROGRESS
  * Used by Task Allocation feature in frontend

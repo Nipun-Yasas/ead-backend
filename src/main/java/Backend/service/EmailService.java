@@ -1251,5 +1251,129 @@ public class EmailService {
                 fromEmail
             );
     }
-}
 
+    /**
+     * Send custom email with provided message
+     */
+    @Async
+    public void sendCustomEmail(String recipientEmail, String customMessage) {
+        try {
+            if (recipientEmail == null || recipientEmail.trim().isEmpty()) {
+                log.warn("Cannot send email - no email address provided");
+                return;
+            }
+
+            MimeMessage message = mailSender.createMimeMessage();
+            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+            helper.setFrom(fromEmail, fromName);
+            helper.setTo(recipientEmail);
+            helper.setSubject("Message from " + fromName);
+
+            String emailContent = buildCustomEmail(customMessage);
+            helper.setText(emailContent, true);
+
+            mailSender.send(message);
+            log.info("Custom email sent successfully to: {}", recipientEmail);
+
+        } catch (MessagingException e) {
+            log.error("Failed to send custom email to {}", recipientEmail, e);
+            throw new RuntimeException("Failed to send email", e);
+        } catch (Exception e) {
+            log.error("Unexpected error sending custom email", e);
+            throw new RuntimeException("Failed to send email", e);
+        }
+    }
+
+    private String buildCustomEmail(String customMessage) {
+        return String.format("""
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body {
+                        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                        line-height: 1.6;
+                        color: #333;
+                        margin: 0;
+                        padding: 0;
+                        background-color: #f4f4f4;
+                    }
+                    .container {
+                        max-width: 600px;
+                        margin: 20px auto;
+                        background: #ffffff;
+                        border-radius: 10px;
+                        overflow: hidden;
+                        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    }
+                    .header {
+                        background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%);
+                        color: white;
+                        padding: 30px;
+                        text-align: center;
+                    }
+                    .header h1 {
+                        margin: 0;
+                        font-size: 28px;
+                        font-weight: 600;
+                    }
+                    .content {
+                        padding: 30px;
+                    }
+                    .message {
+                        color: #374151;
+                        margin-bottom: 25px;
+                        line-height: 1.8;
+                        font-size: 15px;
+                        white-space: pre-wrap;
+                        word-wrap: break-word;
+                    }
+                    .footer {
+                        background: #f9fafb;
+                        padding: 20px 30px;
+                        text-align: center;
+                        color: #6b7280;
+                        font-size: 14px;
+                        border-top: 1px solid #e5e7eb;
+                    }
+                    .footer strong {
+                        color: #374151;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <h1>📧 Message from %s</h1>
+                    </div>
+                    
+                    <div class="content">
+                        <div class="message">%s</div>
+                        
+                        <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+                            If you have any questions, please don't hesitate to contact us.
+                        </p>
+                    </div>
+                    
+                    <div class="footer">
+                        <p>
+                            <strong>%s</strong><br>
+                            This is an automated message from our system.<br>
+                            <a href="mailto:%s" style="color: #667eea; text-decoration: none;">%s</a>
+                        </p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """,
+                fromName,
+                customMessage.replace("\n", "<br>"),
+                fromName,
+                fromEmail,
+                fromEmail
+        );
+    }
+}
