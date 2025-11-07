@@ -1,6 +1,6 @@
 package Backend.controller;
 
-import Backend.dto.Response.DashboardStatsResponse;
+import Backend.dto.Response.AdminDashboardStatsResponse;
 import Backend.service.DashboardService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,14 +21,15 @@ public class DashboardController {
      * Includes:
      * - Total services count by status
      * - Today's appointments
+     * - Cancelled services
      * - Monthly trend (last 12 months)
      * - Employee workload (top 4 employees)
      * - Upcoming appointments (next 5)
      */
     @GetMapping("/stats")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN') or hasRole('EMPLOYEE')")
-    public ResponseEntity<DashboardStatsResponse> getDashboardStats() {
-        DashboardStatsResponse stats = dashboardService.getAppointmentDashboardStats();
+    public ResponseEntity<AdminDashboardStatsResponse> getDashboardStats() {
+        AdminDashboardStatsResponse stats = dashboardService.getDashboardStats();
         return ResponseEntity.ok(stats);
     }
 }

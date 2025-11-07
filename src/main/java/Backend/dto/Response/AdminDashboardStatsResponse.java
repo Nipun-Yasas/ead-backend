@@ -8,6 +8,7 @@ public record AdminDashboardStatsResponse(
     Long inProgressServices,
     Long pendingServices,
     Long todayAppointments,
+    Long cancelledServices,
     List<ServiceStatusCount> servicesByStatus,
     List<MonthlyServiceTrend> monthlyTrend,
     List<EmployeeWorkload> employeeWorkload,
