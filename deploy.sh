@@ -74,8 +74,8 @@ echo "✅ Container started"
 echo ""
 
 # Step 5: Wait for application to start
-echo "⏳ Step 5: Waiting for application to start (30 seconds)..."
-sleep 30
+echo "⏳ Step 5: Waiting for application to start (60 seconds)..."
+sleep 60
 echo ""
 
 # Step 6: Health checks

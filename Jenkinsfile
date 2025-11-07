@@ -132,8 +132,8 @@ pipeline {
                         echo "🚀 Docker container started: test-${BUILD_NUMBER}"
                         echo ""
                         
-                        echo "⏳ Waiting 30 seconds for Spring Boot initialization..."
-                        sleep 30
+                        echo "⏳ Waiting 60 seconds for Spring Boot initialization..."
+                        sleep 60
                         
                         echo ""
                         echo "==================== VERIFICATION CHECKS ===================="
