@@ -11,7 +11,7 @@ pipeline {
         DOCKER_IMAGE_NAME = "ead-backend"
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
         SERVER_PORT = "8090"
-        FRONTEND_URL = "http://localhost:5173"
+        FRONTEND_URL = "https://ead-frontend-opal.vercel.app/"
         
         // non-sensitive configs
         JWT_EXPIRATION = "86400000"
